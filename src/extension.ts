@@ -29,12 +29,13 @@ export function activate(context: vscode.ExtensionContext) {
 		panel.webview.onDidReceiveMessage(message => {
             switch (message.command) {
                 case 'showAlert':
-                    vscode.window.showInformationMessage('You clicked on: ' + message.text, 'Confirm', 'Cancel')
-                        .then(selection => {
-                            if (selection === 'Confirm') {
-                                vscode.window.showInformationMessage('You confirmed: ' + message.text);
-                            }
-                        });
+                    showHtmlInWebview(context, message.text);
+                    // vscode.window.showInformationMessage('You clicked on: ' + message.text, 'Confirm', 'Cancel')
+                    //     .then(selection => {
+                    //         if (selection === 'Confirm') {
+                    //             vscode.window.showInformationMessage('You confirmed: ' + message.text);
+                    //         }
+                    //     });
                     break;
 
                 case 'openEditorDialog':
@@ -45,6 +46,22 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(disposable);
+}
+
+function showHtmlInWebview(context: vscode.ExtensionContext, text: string) {
+    const panel = vscode.window.createWebviewPanel(
+        'htmlDisplay', // 视图类型
+        'HTML Display', // 显示标题
+        vscode.ViewColumn.One, // 显示在编辑器中间
+        {
+            enableScripts: true // 允许脚本
+        }
+    );
+
+    const htmlFilePath = path.join(context.extensionPath, 'src/content.html');
+    const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
+
+    panel.webview.html = htmlContent.replace('{{text}}', text);
 }
 
 export function deactivate() {}
