@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -18,10 +20,12 @@ export function activate(context: vscode.ExtensionContext) {
             }
         );
 
-		// Webview 内容，HTML 和 JavaScript
-        panel.webview.html = getWebviewContent();
+		// 读取 HTML 和 JavaScript 文件内容并赋值给 Webview
+        const htmlFilePath = path.join(context.extensionPath, 'sidebar-webview.html');
+        const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
+        panel.webview.html = htmlContent;
 
-		 // 处理来自 Webview 的消息
+        // 处理来自 Webview 的消息
 		panel.webview.onDidReceiveMessage(message => {
             switch (message.command) {
                 case 'showAlert':
@@ -40,31 +44,3 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
-
-
-function getWebviewContent() {
-    return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Document</title>
-    </head>
-    <body>
-        <h1>Uneditable Document</h1>
-        <p>This is a static document. Click on the <a href="#" id="clickable-text">clickable text</a>.</p>
-        
-        <script>
-            const vscode = acquireVsCodeApi();
-
-            document.getElementById('clickable-text').addEventListener('click', () => {
-                vscode.postMessage({
-                    command: 'showAlert',
-                    text: 'the clickable text'
-                });
-            });
-        </script>
-    </body>
-    </html>`;
-}

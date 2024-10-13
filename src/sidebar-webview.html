@@ -1,0 +1,24 @@
+<!-- 此文件用于编辑插件侧边栏 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Uneditable Document</h1>
+    <p>This is a static document. Click on the <a href="#" id="clickable-text">clickable text</a>.</p>
+    
+    <script>
+        const vscode = acquireVsCodeApi();
+
+        document.getElementById('clickable-text').addEventListener('click', () => {
+            vscode.postMessage({
+                command: 'showAlert',
+                text: 'the clickable text'
+            });
+        });
+    </script>
+</body>
+</html>
