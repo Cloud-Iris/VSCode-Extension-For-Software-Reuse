@@ -40,7 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
 
                 case 'openEditorDialog':
                     vscode.window.showInformationMessage('插件成功打开编辑器对话框!');
-                    showWindowQuickPick();
+                    showHtmlInWebview(context, message.text);
                     break;
             }
         }, undefined, context.subscriptions);
