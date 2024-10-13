@@ -12,6 +12,6 @@
 
 ### 打开侧边栏
 
-命令执行：Open Sidebar For Software Reuse
+命令执行：`Open Sidebar For Software Reuse`
 
 快捷键： `ctrl + shift + alt + o` （ MAC 是 `cmd + shift + alt + o`）
