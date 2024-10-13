@@ -21,7 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
         );
 
 		// 读取 HTML 和 JavaScript 文件内容并赋值给 Webview
-        const htmlFilePath = path.join(context.extensionPath, 'sidebar-webview.html');
+        const htmlFilePath = path.join(context.extensionPath, 'src/sidebar-webview.html');
         const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
         panel.webview.html = htmlContent;
 
@@ -35,6 +35,10 @@ export function activate(context: vscode.ExtensionContext) {
                                 vscode.window.showInformationMessage('You confirmed: ' + message.text);
                             }
                         });
+                    break;
+
+                case 'openEditorDialog':
+                    vscode.window.showInformationMessage('插件成功打开编辑器对话框!');
                     break;
             }
         }, undefined, context.subscriptions);
