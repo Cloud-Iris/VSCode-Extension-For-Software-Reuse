@@ -2,9 +2,67 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
+let activeEditor: vscode.TextEditor | undefined;
+let cursorPosition: vscode.Position | undefined;
+
+// 保存当前编辑器状态
+const saveEditorState = () => {
+    activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor) {
+        cursorPosition = activeEditor.selection.active;
+    }
+};
+
+// 恢复编辑器焦点并插入文本
+const restoreEditorStateAndInsertText = async (text: string) => {
+    if (activeEditor && cursorPosition) {
+        // 重新打开编辑器并聚焦
+        await vscode.window.showTextDocument(activeEditor.document);
+
+        // 在保存的光标位置插入文本
+        activeEditor.edit(editBuilder => {
+            editBuilder.insert(cursorPosition!, text);
+        });
+        vscode.window.showInformationMessage('Content added to the editor.');
+    } else {
+        vscode.window.showErrorMessage('No active editor found or lost focus.');
+    }
+};
+
+async function showWindowQuickPick() {
+    // 选项卡和默认内容
+    const tabOptions: { [key: string]: string } = {
+        'Option 1': 'Default content for Option 1',
+        'Option 2': 'Default content for Option 2',
+        'Option 3': 'Default content for Option 3'
+    };
+
+    // 使用 quick pick 让用户选择一个选项
+    const selectedOption = await vscode.window.showQuickPick(Object.keys(tabOptions), {
+        placeHolder: '选择一个选项卡进行编辑',
+        canPickMany: false
+    });
+
+    if (selectedOption) {
+        // 显示一个输入框让用户编辑内容
+        const userInput = await vscode.window.showInputBox({
+            prompt: `Edit content for ${selectedOption}`,
+            // placeHolder: 'Type your content here',
+            value: tabOptions[selectedOption] // 设置默认内容
+        });
+
+        if (userInput) {
+            restoreEditorStateAndInsertText(userInput);
+        }
+    }
+}
+
+
 export function activate(context: vscode.ExtensionContext) {
 
 	console.log('Congratulations, your extension "software-reuse-extension" is now active!');
+
+    saveEditorState(); // 在显示 Webview 前保存编辑器状态
 
 	// 注册一个命令，触发显示侧边栏
 	const disposable = vscode.commands.registerCommand('software-reuse-extension.showSidebar', () => {
@@ -46,44 +104,6 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(disposable);
-}
-
-async function showWindowQuickPick() {
-    // 选项卡和默认内容
-    const tabOptions: { [key: string]: string } = {
-        'Option 1': 'Default content for Option 1',
-        'Option 2': 'Default content for Option 2',
-        'Option 3': 'Default content for Option 3'
-    };
-
-    // 使用 quick pick 让用户选择一个选项
-    const selectedOption = await vscode.window.showQuickPick(Object.keys(tabOptions), {
-        placeHolder: '选择一个选项卡进行编辑',
-        canPickMany: false
-    });
-
-    if (selectedOption) {
-        // 显示一个输入框让用户编辑内容
-        const userInput = await vscode.window.showInputBox({
-            prompt: `Edit content for ${selectedOption}`,
-            placeHolder: 'Type your content here',
-            value: tabOptions[selectedOption] // 设置默认内容
-        });
-
-        if (userInput) {
-            // 将编辑的内容插入到当前活动的编辑器中
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                const position = editor.selection.active;
-                editor.edit(editBuilder => {
-                    editBuilder.insert(position, userInput);
-                });
-                vscode.window.showInformationMessage(`${selectedOption} content added to the editor.`);
-            } else {
-                vscode.window.showErrorMessage('No active editor found.');
-            }
-        }
-    }
 }
 
 export function deactivate() {}
