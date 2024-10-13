@@ -1,5 +1,9 @@
 # software-reuse-extension README
 
+VS Code 插件的开发需要安装 Yeoman 和 VS Code Extension generator。我这里是全局安装了，所以没有加入依赖：`npm install --global yo generator-code`。
+
+> 如果需要自己创造一个新的插件目录，请执行 `yo code`。在本项目中不需要这么做。
+
 请执行 `npm install` 安装依赖后再进行开发。
 
 进入 `src/extension.ts`，可以选择按下 F5 或者执行 `Debug: Start Debugging` 命令，从而打开一个 VS Code 窗口运行插件效果。
