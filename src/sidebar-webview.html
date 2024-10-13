@@ -9,6 +9,9 @@
 <body>
     <h1>Uneditable Document</h1>
     <p>This is a static document. Click on the <a href="#" id="clickable-text">clickable text</a>.</p>
+
+    <p>点击这里触发编辑器对话框: <a href="#" id="editor-dialog">open editor dialog</a>.</p>
+    
     
     <script>
         const vscode = acquireVsCodeApi();
@@ -17,6 +20,12 @@
             vscode.postMessage({
                 command: 'showAlert',
                 text: 'the clickable text'
+            });
+        });
+
+        document.getElementById('editor-dialog').addEventListener('click', () => {
+            vscode.postMessage({
+                command: 'openEditorDialog'
             });
         });
     </script>
