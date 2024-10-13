@@ -1,6 +1,3 @@
-node_modules
-out
-eslint.config.mjs
-package-lock.json
-package.json
-tsconfig.json
+node_modules/
+.vscode/
+out/
