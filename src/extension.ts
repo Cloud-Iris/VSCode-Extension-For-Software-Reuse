@@ -75,8 +75,11 @@ export function activate(context: vscode.ExtensionContext) {
         const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
         panel.webview.html = htmlContent;
 
+        // 记录当前打开的 code suggestion panel
+        let activeInnerPanel: vscode.WebviewPanel | undefined;
+
         // 处理来自 Webview 的消息
-		panel.webview.onDidReceiveMessage(message => {
+		panel.webview.onDidReceiveMessage(async message => {
             switch (message.command) {
                 case 'showAlert':
                     vscode.window.showInformationMessage('You clicked on: ' + message.text, 'Confirm', 'Cancel')
@@ -89,7 +92,12 @@ export function activate(context: vscode.ExtensionContext) {
 
                 case 'openEditorDialog':
                     vscode.window.showInformationMessage('插件成功打开编辑器对话框!');
-                    const panel = vscode.window.createWebviewPanel(
+
+                    if (activeInnerPanel) {
+                        activeInnerPanel.dispose();
+                    }
+
+                    const codeSuggestionPanel = vscode.window.createWebviewPanel(
                         'htmlDisplay', // 视图类型
                         '代码建议 Code Suggestion', // 显示标题
                         vscode.ViewColumn.Three, // 显示在编辑器旁边
@@ -97,23 +105,25 @@ export function activate(context: vscode.ExtensionContext) {
                             enableScripts: true // 允许脚本
                         }
                     );
+
+                    activeInnerPanel = codeSuggestionPanel;
                     
                     // 打开插件的 “代码建议” 侧边栏
                     const htmlFilePath = path.join(context.extensionPath, 'src/webviews/sidebar-code.html');
                     const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
-                    panel.webview.html = htmlContent;
+                    codeSuggestionPanel.webview.html = htmlContent;
 
-                    panel.webview.onDidReceiveMessage(async message => {
+                    codeSuggestionPanel.webview.onDidReceiveMessage(async message => {
                         switch (message.command) {
                             case 'acceptCode':
                                 vscode.window.showInformationMessage('接受 code!' + message.text);
-                                panel.dispose();  // 关闭 Webview
+                                codeSuggestionPanel.dispose();  // 关闭 Webview
                                 await restoreEditorStateAndInsertText(message.text);
                                 break;
             
                             case 'rejectCode':
                                 vscode.window.showInformationMessage('拒绝 code!');
-                                panel.dispose();  // 关闭 Webview
+                                codeSuggestionPanel.dispose();  // 关闭 Webview
                                 break;
                         }
                     });
