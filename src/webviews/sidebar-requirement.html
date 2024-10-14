@@ -12,8 +12,8 @@
     <h3>细粒度需求</h3>
     <p>点击这里对需求生成代码建议: <a href="#" id="editor-dialog">需要生成代码建议的需求</a>.</p> -->
     <h1>计算器</h1>
-    <p><a href="#" id="editor-dialog">加法</a></p>
-    <p><a href="#" id="editor-dialog">减法</a></p>
+    <p><a href="#" class="editor-dialog">加法</a></p>
+    <p><a href="#" class="editor-dialog">减法</a></p>
     
     
     <script>
@@ -26,9 +26,11 @@
         //     });
         // });
 
-        document.getElementById('editor-dialog').addEventListener('click', () => {
-            vscode.postMessage({
-                command: 'openEditorDialog'
+        document.querySelectorAll('.editor-dialog').forEach(elm => {
+            elm.addEventListener('click', () => {
+                vscode.postMessage({
+                    command: 'openEditorDialog'
+                });
             });
         });
     </script>
