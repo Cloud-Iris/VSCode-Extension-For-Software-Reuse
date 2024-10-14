@@ -12,9 +12,9 @@ VS Code 插件的开发需要安装 Yeoman 和 VS Code Extension generator。我
 
 ## Features
 
-目前插件功能只有 **打开侧边栏**，我配置了一个按钮可以触发 vscode 底部的消息弹出。
+目前插件功能只有 **打开需求大纲侧边栏**，在打开侧边栏的 webview 后，点击超链接可以 **唤起代码建议侧边栏**。
 
-### 打开侧边栏
+### 打开需求大纲侧边栏
 
 命令执行：`Open Sidebar For Software Reuse`
 
