@@ -12,19 +12,24 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "software-reuse-extension.showSidebar",
-        "title": "Open Sidebar For Software Reuse"
-      }
-    ],
-    "keybindings": [
-      {
-        "command": "software-reuse-extension.showSidebar",
-        "key": "ctrl+shift+alt+o",
-        "mac": "cmd+shift+alt+o"
-      }
-    ]
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "myExtensionSidebar",
+          "title": "插件侧边栏",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "myExtensionSidebar": [
+        {
+          "id": "myWebviewView",
+          "type": "webview",
+          "name": "需求大纲"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
