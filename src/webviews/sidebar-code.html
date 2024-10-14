@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Selection</title>
+    <title>代码建议</title>
     <style>
         .code-block { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
         .button { margin: 5px; padding: 5px 10px; cursor: pointer; }
@@ -12,7 +12,7 @@
     </style>
 </head>
 <body>
-    <div class="code-block" onclick="showButtons(this)">
+    <div class="code-block" onclick="chooseCodeDiv(this)">
         <!-- 这里的 id 需要和下面的 tabContents 一致 -->
         <textarea id="tab1" class="tab-text" readonly ></textarea>
         <div class="buttons" style="display: none;">
@@ -20,14 +20,14 @@
             <button class="button reject" onclick="rejectCode(event)">Reject</button>
         </div>
     </div>
-    <div class="code-block" onclick="showButtons(this)">
+    <div class="code-block" onclick="chooseCodeDiv(this)">
         <textarea id="tab2" class="tab-text" readonly ></textarea>
         <div class="buttons" style="display: none;">
             <button class="button accept" onclick="acceptCode(event)">Accept</button>
             <button class="button reject" onclick="rejectCode(event)">Reject</button>
         </div>
     </div>
-    <div class="code-block" onclick="showButtons(this)">
+    <div class="code-block" onclick="chooseCodeDiv(this)">
         <textarea id="tab3" class="tab-text" readonly ></textarea>
         <div class="buttons" style="display: none;">
             <button class="button accept" onclick="acceptCode(event)">Accept</button>
@@ -43,6 +43,7 @@
             'tab2': 'Default Code content for Option 2',
             'tab3': 'Default Code content for Option 3'
         };
+        
         // 初始化内容
         document.querySelectorAll(".tab-text").forEach(
             textArea => {
@@ -50,7 +51,7 @@
             }
         );
 
-        function showButtons(element) {
+        function chooseCodeDiv(element) {
             const buttons = element.querySelector('.buttons');
             buttons.style.display = 'block';
             document.querySelectorAll('.code-block').forEach(blocks => {
@@ -66,15 +67,16 @@
             activeTab = textArea.id;
             console.log(activeTab);
         }
+
         function acceptCode(event) {
             event.stopPropagation();
             const chosenTextArea = document.getElementById(activeTab);
-            // console.log(chosenTextArea.value);
             vscode.postMessage({
                 command: 'acceptCode',
                 text: chosenTextArea.value
             });
         }
+
         function rejectCode(event) {
             event.stopPropagation();
             vscode.postMessage({ command: 'rejectCode' });

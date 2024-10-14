@@ -61,7 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const panel = vscode.window.createWebviewPanel(
             'sidebar', // 视图类型
-            'My Sidebar', // 显示标题
+            '需求大纲 Requirement Outline', // 显示标题
             vscode.ViewColumn.Two, // 显示在侧边栏
             {
                 enableScripts: true, // 允许脚本
@@ -69,8 +69,9 @@ export function activate(context: vscode.ExtensionContext) {
             }
         );
 
+        // 打开插件的 “需求大纲” 侧边栏
+        const htmlFilePath = path.join(context.extensionPath, 'src/webviews/sidebar-requirement.html');
 		// 读取 HTML 和 JavaScript 文件内容并赋值给 Webview
-        const htmlFilePath = path.join(context.extensionPath, 'src/sidebar-webview.html');
         const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
         panel.webview.html = htmlContent;
 
@@ -87,17 +88,18 @@ export function activate(context: vscode.ExtensionContext) {
                     break;
 
                 case 'openEditorDialog':
-                    vscode.window.showInformationMessage('插件成功打开编辑器对话框!·');
+                    vscode.window.showInformationMessage('插件成功打开编辑器对话框!');
                     const panel = vscode.window.createWebviewPanel(
                         'htmlDisplay', // 视图类型
-                        'HTML Display', // 显示标题
+                        '代码建议 Code Suggestion', // 显示标题
                         vscode.ViewColumn.Three, // 显示在编辑器旁边
                         {
                             enableScripts: true // 允许脚本
                         }
                     );
-                
-                    const htmlFilePath = path.join(context.extensionPath, 'src/content-webview.html');
+                    
+                    // 打开插件的 “代码建议” 侧边栏
+                    const htmlFilePath = path.join(context.extensionPath, 'src/webviews/sidebar-code.html');
                     const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
                     panel.webview.html = htmlContent;
 
