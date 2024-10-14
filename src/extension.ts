@@ -39,41 +39,11 @@ const restoreEditorStateAndInsertText = async (text: string) => {
     }
 };
 
-// async function showWindowQuickPick() {
-//     // 选项卡和默认内容
-//     const tabOptions: { [key: string]: string } = {
-//         'Option 1': 'Default content for Option 1',
-//         'Option 2': 'Default content for Option 2',
-//         'Option 3': 'Default content for Option 3'
-//     };
-
-//     // 使用 quick pick 让用户选择一个选项
-//     const selectedOption = await vscode.window.showQuickPick(Object.keys(tabOptions), {
-//         placeHolder: '选择一个选项卡进行编辑',
-//         canPickMany: false
-//     });
-
-//     if (selectedOption) {
-//         // 显示一个输入框让用户编辑内容
-//         const userInput = await vscode.window.showInputBox({
-//             prompt: `Edit content for ${selectedOption}`,
-//             // placeHolder: 'Type your content here',
-//             value: tabOptions[selectedOption] // 设置默认内容
-//         });
-
-//         if (userInput) {
-//             restoreEditorStateAndInsertText(userInput);
-//         }
-//     }
-// }
-
 // 监听编辑器的焦点变化，实时更新光标位置
 vscode.window.onDidChangeTextEditorSelection(event => {
     if (event.textEditor === vscode.window.activeTextEditor) {
         activeEditor = event.textEditor;
         cursorPosition = event.selections[0].active;
-        console.log(activeEditor);
-        console.log(cursorPosition);
     } else {
         console.log(event.textEditor);
     }
@@ -118,11 +88,10 @@ export function activate(context: vscode.ExtensionContext) {
 
                 case 'openEditorDialog':
                     vscode.window.showInformationMessage('插件成功打开编辑器对话框!·');
-                    // showWindowQuickPick();
                     const panel = vscode.window.createWebviewPanel(
                         'htmlDisplay', // 视图类型
                         'HTML Display', // 显示标题
-                        vscode.ViewColumn.Beside, // 显示在编辑器旁边
+                        vscode.ViewColumn.Three, // 显示在编辑器旁边
                         {
                             enableScripts: true // 允许脚本
                         }

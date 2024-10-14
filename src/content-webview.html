@@ -44,10 +44,8 @@
             'tab3': 'Default Code content for Option 3'
         };
         // 初始化内容
-        // console.log(document.querySelectorAll('.code-block'))
         document.querySelectorAll(".tab-text").forEach(
             textArea => {
-                // console.log(textArea.id);
                 textArea.value = tabContents[textArea.id];
             }
         );
