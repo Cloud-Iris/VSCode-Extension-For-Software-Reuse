@@ -2,9 +2,58 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
+let activeEditor: vscode.TextEditor | undefined;
+let cursorPosition: vscode.Position | undefined;
+
+// 保存当前编辑器状态
+const saveEditorState = () => {
+    activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor) {
+        cursorPosition = activeEditor.selection.active;
+        // console.log(activeEditor, cursorPosition);
+    }
+};
+
+// 恢复编辑器焦点并插入文本
+const restoreEditorStateAndInsertText = async (text: string) => {
+    if (activeEditor && cursorPosition) {
+        // 重新打开编辑器并聚焦
+        try {
+            await vscode.window.showTextDocument(activeEditor.document, vscode.ViewColumn.One);
+            // 在保存的光标位置插入文本
+            console.log(`即将插入 code 的位置是 Line:${cursorPosition.line}, Character:${cursorPosition.character}`);
+            const success = await activeEditor.edit(editBuilder => {
+                editBuilder.insert(cursorPosition!, text);
+            });
+            if (success) {
+                vscode.window.showInformationMessage('Content added to the editor.');
+            } else {
+                vscode.window.showErrorMessage('Failed to edit the document.');
+            }
+
+        } catch (error) {
+            vscode.window.showErrorMessage('Error restoring editor state: ' + error);
+        }
+    } else {
+        vscode.window.showErrorMessage('No active editor found or lost focus.');
+    }
+};
+
+// 监听编辑器的焦点变化，实时更新光标位置
+vscode.window.onDidChangeTextEditorSelection(event => {
+    if (event.textEditor === vscode.window.activeTextEditor) {
+        activeEditor = event.textEditor;
+        cursorPosition = event.selections[0].active;
+    } else {
+        console.log(event.textEditor);
+    }
+});
+
 export function activate(context: vscode.ExtensionContext) {
 
 	console.log('Congratulations, your extension "software-reuse-extension" is now active!');
+
+    saveEditorState(); // 在显示 showSidebar Webview 前保存编辑器状态
 
 	// 注册一个命令，触发显示侧边栏
 	const disposable = vscode.commands.registerCommand('software-reuse-extension.showSidebar', () => {
@@ -29,40 +78,50 @@ export function activate(context: vscode.ExtensionContext) {
 		panel.webview.onDidReceiveMessage(message => {
             switch (message.command) {
                 case 'showAlert':
-                    showHtmlInWebview(context, message.text);
-                    // vscode.window.showInformationMessage('You clicked on: ' + message.text, 'Confirm', 'Cancel')
-                    //     .then(selection => {
-                    //         if (selection === 'Confirm') {
-                    //             vscode.window.showInformationMessage('You confirmed: ' + message.text);
-                    //         }
-                    //     });
+                    vscode.window.showInformationMessage('You clicked on: ' + message.text, 'Confirm', 'Cancel')
+                        .then(selection => {
+                            if (selection === 'Confirm') {
+                                vscode.window.showInformationMessage('You confirmed: ' + message.text);
+                            }
+                        });
                     break;
 
                 case 'openEditorDialog':
-                    vscode.window.showInformationMessage('插件成功打开编辑器对话框!');
-                    showHtmlInWebview(context, message.text);
+                    vscode.window.showInformationMessage('插件成功打开编辑器对话框!·');
+                    const panel = vscode.window.createWebviewPanel(
+                        'htmlDisplay', // 视图类型
+                        'HTML Display', // 显示标题
+                        vscode.ViewColumn.Three, // 显示在编辑器旁边
+                        {
+                            enableScripts: true // 允许脚本
+                        }
+                    );
+                
+                    const htmlFilePath = path.join(context.extensionPath, 'src/content-webview.html');
+                    const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
+                    panel.webview.html = htmlContent;
+
+                    panel.webview.onDidReceiveMessage(async message => {
+                        switch (message.command) {
+                            case 'acceptCode':
+                                vscode.window.showInformationMessage('接受 code!' + message.text);
+                                panel.dispose();  // 关闭 Webview
+                                await restoreEditorStateAndInsertText(message.text);
+                                break;
+            
+                            case 'rejectCode':
+                                vscode.window.showInformationMessage('拒绝 code!');
+                                panel.dispose();  // 关闭 Webview
+                                break;
+                        }
+                    });
                     break;
+
             }
         }, undefined, context.subscriptions);
 	});
 
 	context.subscriptions.push(disposable);
-}
-
-function showHtmlInWebview(context: vscode.ExtensionContext, text: string) {
-    const panel = vscode.window.createWebviewPanel(
-        'htmlDisplay', // 视图类型
-        'HTML Display', // 显示标题
-        vscode.ViewColumn.One, // 显示在编辑器中间
-        {
-            enableScripts: true // 允许脚本
-        }
-    );
-
-    const htmlFilePath = path.join(context.extensionPath, 'src/content.html');
-    const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
-
-    panel.webview.html = htmlContent.replace('{{text}}', text);
 }
 
 export function deactivate() {}
