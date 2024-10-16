@@ -5,32 +5,109 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>需求分解</title>
-    <link rel="stylesheet" href="###CSS">
-    <!-- <link rel="stylesheet" href="./css/style-requirement.css"> -->
+    <!-- <link rel="stylesheet" href="###CSS"> -->
+    <link rel="stylesheet" href="./css/style-requirement.css">
 </head>
 <body>
-    <h1>计算器</h1>
-    <p><a href="#" class="editor-dialog">加法</a></p>
-    <p><a href="#" class="editor-dialog">减法</a></p>
-    
-    
+    <div class="input-container" id="input-container">
+        <input type="text" id="requirement-input" placeholder="请输入需求">
+        <button onclick="submitRequirement()">提交</button>
+    </div>
+    <div class="requirement" id="requirement-title"></div>
+    <div class="sub-requirements" id="sub-requirements"></div>
+    <button id="add-2-level-req" onclick="addSubRequirement()" style="display: none">新增二级需求</button>
+
     <script>
-        const vscode = acquireVsCodeApi();
+        function submitRequirement() {
+            const input = document.getElementById('requirement-input').value;
+            const requirementTitle = document.getElementById('requirement-title');
+            const subRequirements = document.getElementById('sub-requirements');
+            const inputContainer = document.getElementById('input-container');
+            const add2LevelReqBtn = document.getElementById('add-2-level-req');
 
-        // document.getElementById('clickable-text').addEventListener('click', () => {
-        //     vscode.postMessage({
-        //         command: 'showAlert',
-        //         text: 'the clickable text'
-        //     });
-        // });
+            // 设置主需求标题
+            requirementTitle.innerHTML = `<h1>${input}</h1>`;
+            // 清空之前的各级子需求
+            subRequirements.innerHTML = '';
 
-        document.querySelectorAll('.editor-dialog').forEach(elm => {
-            elm.addEventListener('click', () => {
-                vscode.postMessage({
-                    command: 'openEditorDialog'
-                });
-            });
-        });
+            // 增加二级需求的容器
+            const _2LevelReqContainer = document.createElement('div');
+            _2LevelReqContainer.className = '_2-level-requirements';
+            subRequirements.appendChild(_2LevelReqContainer);
+
+            // 添加三个默认的二级需求 TODO: 请在此处实现动态添加二级需求的逻辑
+            for (let i = 1; i <= 3; i++) {
+                addSubRequirement(_2LevelReqContainer, `二级需求 ${i}`);
+            }
+
+            
+            // 增加二级需求的容器
+            const _3LevelReqContainer = document.createElement('div');
+            _3LevelReqContainer.className = '_2-level-requirements';
+            subRequirements.appendChild(_3LevelReqContainer);
+
+            // 添加三个默认的二级需求 TODO: 请在此处实现动态添加二级需求的逻辑
+            for (let i = 1; i <= 3; i++) {
+                addSubRequirement(_3LevelReqContainer, `三级需求 ${i}`);
+            }
+
+            // 隐藏输入框和提交按钮
+            inputContainer.style.display = 'none';
+            // 显示新增二级需求按钮
+            add2LevelReqBtn.style.display = 'block';
+        }
+
+        function addSubRequirement(parentElement, title = '二级需求') {
+            if (parentElement instanceof HTMLElement) {
+                const subRequirements = document.getElementById('sub-requirements');
+                const subRequirement = document.createElement('div');
+                subRequirement.className = 'sub-requirement';
+                subRequirement.innerHTML = `
+                    <h2>${title}</h2>
+                    <div class="content">
+                        <div class="description" contenteditable="false" onblur="updateSubRequirement(this)">默认二级需求</div>
+                        <div class="buttons">
+                            <button onclick="editSubRequirement(this)">编辑</button>
+                            <button onclick="decomposeSubRequirement(this)">分解</button>
+                            <button onclick="deleteSubRequirement(this)">删除</button>
+                        </div>
+                    </div>
+                `;
+                parentElement.appendChild(subRequirement);
+            } else {
+                console.error('parentElement is not a HTMLElement!!!');
+            }
+        }
+
+        function editSubRequirement(button) {
+            const description = button.parentElement.previousElementSibling;
+            if (button.textContent === '编辑') {
+                button.textContent = '确定';
+                description.contentEditable = 'true';
+                description.focus();
+            } else {
+                button.textContent = '编辑';
+                description.contentEditable = 'false';
+            }
+        }
+
+        function updateSubRequirement(description) {
+            const button = description.nextElementSibling.querySelector('button');
+            if (button.textContent === '确定') {
+                button.textContent = '编辑';
+                description.contentEditable = 'false';
+            }
+        }
+
+        function decomposeSubRequirement(button) {
+            // 实现分解二级需求的逻辑
+            alert('分解二级需求功能待实现');
+        }
+
+        function deleteSubRequirement(button) {
+            const subRequirement = button.parentElement.parentElement.parentElement;
+            subRequirement.remove();
+        }
     </script>
 </body>
 </html>
