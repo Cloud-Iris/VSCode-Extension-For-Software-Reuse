@@ -44,7 +44,16 @@ button:hover {
     flex-direction: row;
     justify-content:space-around;
 }
-._2-level-requirements {
+.mid-level-req-column {
+    display: flex;
+    flex-direction: column;
+    /* border: 1px solid #1c00f1; */
+}
+.add-mid-level-req-btn {
+    width: 80%;
+    margin: 5px auto 0;
+}
+.mid-level-requirements {
     display: flex;
     flex-direction: column;
     /* border: 1px solid blue; */

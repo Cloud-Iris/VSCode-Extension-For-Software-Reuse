@@ -13,9 +13,10 @@
         <input type="text" id="requirement-input" placeholder="请输入需求">
         <button onclick="submitRequirement()">提交</button>
     </div>
+    <!-- 将用户的输入需求以 h1 展示在页面上 -->
     <div class="requirement" id="requirement-title"></div>
+    <!-- 存放各级拆解后的子需求的大容器 -->
     <div class="sub-requirements" id="sub-requirements"></div>
-    <button id="add-2-level-req" onclick="addSubRequirement()" style="display: none">新增二级需求</button>
 
     <script>
         function submitRequirement() {
@@ -23,43 +24,65 @@
             const requirementTitle = document.getElementById('requirement-title');
             const subRequirements = document.getElementById('sub-requirements');
             const inputContainer = document.getElementById('input-container');
-            const add2LevelReqBtn = document.getElementById('add-2-level-req');
 
             // 设置主需求标题
             requirementTitle.innerHTML = `<h1>${input}</h1>`;
             // 清空之前的各级子需求
             subRequirements.innerHTML = '';
 
-            // 增加二级需求的容器
+            // 主容器 插入 二级需求列容器
+            const _2LevelReqColumn = document.createElement('div');
+            _2LevelReqColumn.className = 'mid-level-req-column';
+            subRequirements.appendChild(_2LevelReqColumn);
+            // 二级需求列容器 插入 二级需求容器
             const _2LevelReqContainer = document.createElement('div');
-            _2LevelReqContainer.className = '_2-level-requirements';
-            subRequirements.appendChild(_2LevelReqContainer);
+            _2LevelReqContainer.className = 'mid-level-requirements';
+            _2LevelReqColumn.appendChild(_2LevelReqContainer);
+            // 二级需求列容器 插入 增加二级需求的按钮
+            addBtnForAddMidLevelReq(_2LevelReqColumn, _2LevelReqContainer, '二');
 
-            // 添加三个默认的二级需求 TODO: 请在此处实现动态添加二级需求的逻辑
+            // 二级需求容器 插入 三个默认的二级需求 TODO: 请在此处实现动态添加二级需求的逻辑
             for (let i = 1; i <= 3; i++) {
                 addSubRequirement(_2LevelReqContainer, `二级需求 ${i}`);
             }
 
-            
-            // 增加二级需求的容器
+            // 主容器 插入 三级需求列容器
+            const _3LevelReqColumn = document.createElement('div');
+            _3LevelReqColumn.className = 'mid-level-req-column';
+            subRequirements.appendChild(_3LevelReqColumn);
+            // 三级需求列容器 插入 三级需求容器
             const _3LevelReqContainer = document.createElement('div');
-            _3LevelReqContainer.className = '_2-level-requirements';
-            subRequirements.appendChild(_3LevelReqContainer);
+            _3LevelReqContainer.className = 'mid-level-requirements';
+            _3LevelReqColumn.appendChild(_3LevelReqContainer);
+            // 三级需求列容器 插入 增加三级需求的按钮
+            addBtnForAddMidLevelReq(_3LevelReqColumn, _3LevelReqContainer, '三');
 
-            // 添加三个默认的二级需求 TODO: 请在此处实现动态添加二级需求的逻辑
+            // 二级需求容器 插入 三个默认的三级需求 TODO: 请在此处实现动态添加三级需求的逻辑
             for (let i = 1; i <= 3; i++) {
                 addSubRequirement(_3LevelReqContainer, `三级需求 ${i}`);
             }
-
+            
             // 隐藏输入框和提交按钮
             inputContainer.style.display = 'none';
-            // 显示新增二级需求按钮
-            add2LevelReqBtn.style.display = 'block';
+        }
+
+        function addBtnForAddMidLevelReq(parentElement, targetElementForAddReq, level='二') {
+            if (parentElement instanceof HTMLElement && targetElementForAddReq instanceof HTMLElement) {
+                const addMidLevelReqBtn = document.createElement('button');
+                addMidLevelReqBtn.textContent = `新增${level}级需求`;
+                addMidLevelReqBtn.className = 'add-mid-level-req-btn';
+                addMidLevelReqBtn.onclick = () => {
+                    addSubRequirement(targetElementForAddReq, `${level}级需求`);
+                };
+                parentElement.appendChild(addMidLevelReqBtn);
+            } else {
+                console.error('parentElement is not a HTMLElement!!!');
+                console.error('targetElementForAddReq is not a HTMLElement!!!');
+            }
         }
 
         function addSubRequirement(parentElement, title = '二级需求') {
             if (parentElement instanceof HTMLElement) {
-                const subRequirements = document.getElementById('sub-requirements');
                 const subRequirement = document.createElement('div');
                 subRequirement.className = 'sub-requirement';
                 subRequirement.innerHTML = `
