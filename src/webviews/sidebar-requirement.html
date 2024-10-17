@@ -48,37 +48,22 @@
             const _2LevelReqContainer = document.createElement('div');
             _2LevelReqContainer.className = 'mid-level-requirements';
             _2LevelReqColumn.appendChild(_2LevelReqContainer);
-            // 二级需求列容器 插入 增加二级需求的按钮
-            addBtnForAddMidLevelReq(_2LevelReqColumn, _2LevelReqContainer, '二');
 
-            // 获取并插入二级需求 TODO: 这里后续要对用户输入攻击做处理
+            // 二级需求容器 获取并插入 二级需求 TODO: 这里后续要对用户输入攻击做处理
             const subReqs = await fetchSubRequirements(input.trim());
-            subReqs.forEach(req => addSubRequirement(_2LevelReqContainer, '二级需求', req));
+            subReqs.forEach(req => addSubRequirement(_2LevelReqContainer, '2 级需求', req, 2));
 
-            // // 主容器 插入 三级需求列容器
-            // const _3LevelReqColumn = document.createElement('div');
-            // _3LevelReqColumn.className = 'mid-level-req-column';
-            // subRequirements.appendChild(_3LevelReqColumn);
-            // // 三级需求列容器 插入 三级需求容器
-            // const _3LevelReqContainer = document.createElement('div');
-            // _3LevelReqContainer.className = 'mid-level-requirements';
-            // _3LevelReqColumn.appendChild(_3LevelReqContainer);
-            // // 三级需求列容器 插入 增加三级需求的按钮
-            // addBtnForAddMidLevelReq(_3LevelReqColumn, _3LevelReqContainer, '三');
-
-            // // 二级需求容器 插入 三个默认的三级需求 TODO: 请在此处实现动态添加三级需求的逻辑
-            // for (let i = 1; i <= 3; i++) {
-            //     addSubRequirement(_3LevelReqContainer, `三级需求 ${i}`);
-            // }
+            // 二级需求列容器 插入 增加二级需求的按钮
+            addBtnForAddMidLevelReq(_2LevelReqColumn, _2LevelReqContainer, 2);
         }
 
-        function addBtnForAddMidLevelReq(parentElement, targetElementForAddReq, level='二') {
+        function addBtnForAddMidLevelReq(parentElement, targetElementForAddReq, level = 2) {
             if (parentElement instanceof HTMLElement && targetElementForAddReq instanceof HTMLElement) {
                 const addMidLevelReqBtn = document.createElement('button');
                 addMidLevelReqBtn.textContent = `新增${level}级需求`;
                 addMidLevelReqBtn.className = 'add-mid-level-req-btn';
                 addMidLevelReqBtn.onclick = () => {
-                    addSubRequirement(targetElementForAddReq, `${level}级需求`, `默认${level}级需求`);
+                    addSubRequirement(targetElementForAddReq, `${level} 级需求`, `默认 ${level} 级需求`, level);
                 };
                 parentElement.appendChild(addMidLevelReqBtn);
             } else {
@@ -87,7 +72,7 @@
             }
         }
 
-        function addSubRequirement(parentElement, title = '二级需求', subReq = '默认二级需求') {
+        function addSubRequirement(parentElement, title = '2 级需求', subReq = '默认 2 级需求', level = 2) {
             if (parentElement instanceof HTMLElement) {
                 const subRequirement = document.createElement('div');
                 subRequirement.className = 'sub-requirement';
@@ -97,7 +82,7 @@
                         <div class="description" contenteditable="false">${subReq}</div>
                         <div class="buttons">
                             <button onclick="editSubRequirement(this)">编辑</button>
-                            <button onclick="decomposeSubRequirement(this)">分解</button>
+                            <button onclick="decomposeSubRequirement(this, ${level})">分解</button>
                             <button onclick="deleteSubRequirement(this)">删除</button>
                         </div>
                     </div>
@@ -122,17 +107,43 @@
             }
         }
 
-        // function updateSubRequirement(description) {
-        //     const button = description.nextElementSibling.querySelector('button');
-        //     if (button.textContent === '确定') {
-        //         button.textContent = '编辑';
-        //         description.contentEditable = 'false';
-        //     }
-        // }
+        async function decomposeSubRequirement(button, level) {
+            console.log('拆分的需求层级是：', level);
+            if (button instanceof HTMLButtonElement) {
+                // IMPORTANT 点击分解按钮，需求级别 +1
+                level += 1;
+                // 主容器
+                const subRequirements = document.getElementById('sub-requirements');
+                // 主容器 只插入一次 三级需求列容器，之后每次点击分解按钮，需要清空三级需求列容器
+                // let _3LevelReqColumn = subRequirements.querySelector(`#_3-level-req-column`);
+                const LEVEL_ID = `_${level}-level-req-column`;
+                let _3LevelReqColumn = subRequirements.querySelector('#' + LEVEL_ID);
+                if (!_3LevelReqColumn) {
+                    _3LevelReqColumn = document.createElement('div');
+                    _3LevelReqColumn.className = 'mid-level-req-column';
+                    _3LevelReqColumn.id = LEVEL_ID;
+                    subRequirements.appendChild(_3LevelReqColumn);
+                } else {
+                    _3LevelReqColumn.innerHTML = '';
+                }
+                // 三级需求列容器 插入 三级需求容器
+                const _3LevelReqContainer = document.createElement('div');
+                _3LevelReqContainer.className = 'mid-level-requirements';
+                _3LevelReqColumn.appendChild(_3LevelReqContainer);
 
-        function decomposeSubRequirement(button) {
-            // 实现分解二级需求的逻辑
-            alert('分解二级需求功能待实现');
+                // 三级需求容器 获取并插入 三级需求
+                const description = button.parentElement.previousElementSibling;
+                const moduleH1 = button.parentElement.parentElement.previousElementSibling;
+                const subReqs = await fetchLevelRequirements(
+                    description.textContent.trim(), 
+                    moduleH1.textContent.trim(),
+                    level
+                );
+                subReqs.forEach(req => addSubRequirement(_3LevelReqContainer, `${level} 级需求`, req, level));
+
+                // 三级需求列容器 插入 增加三级需求的按钮
+                addBtnForAddMidLevelReq(_3LevelReqColumn, _3LevelReqContainer, level);
+            }
         }
 
         function deleteSubRequirement(button) {
@@ -140,18 +151,33 @@
             subRequirement.remove();
         }
 
+        // #region 模拟后端请求
         async function fetchSubRequirements(requirement) {
             // 模拟后端返回的数据
             return new Promise((resolve) => {
                 setTimeout(() => {
                     resolve([
-                        `默认二级需求 1 for ${requirement}`,
-                        `默认二级需求 2 for ${requirement}`,
-                        `默认二级需求 3 for ${requirement}`
+                        `默认 2 级需求 111 for ${requirement}`,
+                        `默认 2 级需求 222 for ${requirement}`,
+                        `默认 2 级需求 333 for ${requirement}`
                     ]);
-                }, 1000); // 模拟网络延迟
+                }, 500); // 模拟网络延迟
             });
         }
+
+        async function fetchLevelRequirements(module, requirement, level) {
+            // 模拟后端返回的数据
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve([
+                        `默认 ${level} 级需求 111 for ${module}`,
+                        `默认 ${level} 级需求 222 for ${module}`,
+                        `默认 ${level} 级需求 333 for ${module}`
+                    ]);
+                }, 500); // 模拟网络延迟
+            });
+        }
+        // #endregion
     </script>
 </body>
 </html>
