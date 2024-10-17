@@ -88,7 +88,7 @@
                 subRequirement.innerHTML = `
                     <h2>${title}</h2>
                     <div class="content">
-                        <div class="description" contenteditable="false" onblur="updateSubRequirement(this)">默认二级需求</div>
+                        <div class="description" contenteditable="false">默认二级需求</div>
                         <div class="buttons">
                             <button onclick="editSubRequirement(this)">编辑</button>
                             <button onclick="decomposeSubRequirement(this)">分解</button>
@@ -114,13 +114,13 @@
             }
         }
 
-        function updateSubRequirement(description) {
-            const button = description.nextElementSibling.querySelector('button');
-            if (button.textContent === '确定') {
-                button.textContent = '编辑';
-                description.contentEditable = 'false';
-            }
-        }
+        // function updateSubRequirement(description) {
+        //     const button = description.nextElementSibling.querySelector('button');
+        //     if (button.textContent === '确定') {
+        //         button.textContent = '编辑';
+        //         description.contentEditable = 'false';
+        //     }
+        // }
 
         function decomposeSubRequirement(button) {
             // 实现分解二级需求的逻辑
