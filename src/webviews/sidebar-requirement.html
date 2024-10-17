@@ -114,10 +114,12 @@
             const description = button.parentElement.previousElementSibling;
             if (button.textContent === '编辑') {
                 button.textContent = '确定';
+                button.classList.add('pending-btn');
                 description.contentEditable = 'true';
                 description.focus();
             } else {
                 button.textContent = '编辑';
+                button.classList.remove('pending-btn');
                 description.contentEditable = 'false';
             }
         }

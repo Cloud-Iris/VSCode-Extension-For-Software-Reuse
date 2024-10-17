@@ -39,6 +39,13 @@ button {
 button:hover {
     background-color: #005f99;
 }
+.pending-btn {
+    background-color: #FFA500;
+}
+.pending-btn:hover {
+    background-color: #FF8C00;
+}
+
 .requirement {
     margin-top: 20px;
 }
