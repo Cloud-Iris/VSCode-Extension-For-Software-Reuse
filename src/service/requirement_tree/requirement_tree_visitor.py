@@ -1,4 +1,5 @@
 from service.requirement_tree.requirement_tree_node import RequirementTreeNode, RequirementInternalNode, RequirementLeafNode
+import ollama
 
 
 class RequirementTreeVisitorBase:
@@ -17,9 +18,20 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
         self.requirement = requirement
     
     def visit_leaf(self, node: RequirementTreeNode):
-        # TODO: 调用大模型，修改子节点的代码
+        # TODO: 调用大模型，基于self.requirement修改子节点的代码
         # node.code = ollama.chat(.......)
-        pass
+        prompt="""
+        You are a top-notch Python programmer. 
+        For the following requirement: {requirement}. 
+        
+        Refactor the provided code to be more optimized and maintainable: {code}
+
+        Incorporate best practices and add comments where necessary. 
+        Present only the refactored code.
+        """.format(requirement=self.requirement,code=node.code)
+        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        code = res['message']['content']
+        return code
     
     def visit_internal(self, node: RequirementInternalNode):
         # TODO: 内部节点可能也无法满足其父节点的要求，可能要递归地要求做子节点修改
