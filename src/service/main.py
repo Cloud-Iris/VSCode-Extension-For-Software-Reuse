@@ -1,7 +1,9 @@
-from decompose_requirements import decompose_requirements
+from decompose_requirements import decompose_requirements, requirements_classification
 if __name__ == "__main__":
     print("请输入您的需求：")
     s = input()
+    s = requirements_classification(s)
+    print(s)
     # e.g. create: 我想要创建一个计算器
     # 要和创建其他节点区分开，因为可能会有不同系统
     if s.startswith("create"):

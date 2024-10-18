@@ -2,6 +2,24 @@ import ollama
 import re
 from prompt import role, task, one_shot
 
+# 将用户输入的需求分类为create, modify, add, delete
+def requirements_classification(s:str) -> str:
+    # create, modify, add, delete
+    prompt = f"Classify the following requirement into one of the categories: create, modify, add, delete. Only one word is returned. \nRequirement: {s}"
+    res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+    classification = res['message']['content'].lower()
+    print(classification)
+    if "create" in classification:
+        return "create"
+    elif "modify" in classification:
+        return "modify"
+    elif "add" in classification:
+        return "add"
+    elif "delete" in classification:
+        return "delete"
+    else:
+        raise ValueError("Unable to classify the requirement.")
+
 def decompose_requirements(requirements):
     """
     Decompose the requirements into a list of requirements.
