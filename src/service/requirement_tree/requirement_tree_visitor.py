@@ -1,4 +1,8 @@
-from service.requirement_tree.requirement_tree_node import RequirementTreeNode, RequirementInternalNode, RequirementLeafNode
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requirement_tree_node import RequirementTreeNode, RequirementInternalNode, RequirementLeafNode
+
 import ollama
 
 
@@ -6,10 +10,10 @@ class RequirementTreeVisitorBase:
     def __init__(self):
         pass
 
-    def visit_internal(self, node: RequirementInternalNode):
+    def visit_internal(self, node: 'RequirementInternalNode'):
         pass
     
-    def visit_leaf(self, node: RequirementLeafNode):
+    def visit_leaf(self, node: 'RequirementLeafNode'):
         pass
 
 
@@ -17,7 +21,7 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
     def __init__(self, requirement: str):
         self.requirement = requirement
     
-    def visit_leaf(self, node: RequirementTreeNode):
+    def visit_leaf(self, node: 'RequirementTreeNode'):
         # TODO: 调用大模型，基于self.requirement修改子节点的代码
         # node.code = ollama.chat(.......)
         prompt="""
@@ -32,7 +36,7 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         node.code = res['message']['content']
     
-    def visit_internal(self, node: RequirementInternalNode):
+    def visit_internal(self, node: 'RequirementInternalNode'):
         # TODO: 内部节点可能也无法满足其父节点的要求，可能要递归地要求做子节点修改
         # 检查当前节点是否可以满足父节点的要求
         # satisfiable = ollama.chat(......)
