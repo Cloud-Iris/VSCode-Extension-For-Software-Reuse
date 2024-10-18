@@ -31,3 +31,10 @@ def decompose_requirements(requirements):
         print(s)
     else:
         print("message or content not found in response")
+
+def user_confirm():
+    """
+    Confirm the requirements.
+    """
+    response = input("你确认执行吗[y]/n: ").strip().lower()
+    return response == 'y' or response == ''

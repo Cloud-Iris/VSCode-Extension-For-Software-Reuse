@@ -10,11 +10,11 @@ if __name__ == "__main__":
     if s.beginswith("add"):
         # To Do: 
         pass
-    # e.g. add: 我想要删除加法功能
+    # e.g. delete: 我想要删除加法功能
     if s.beginswith("delete"):
         # To Do: 
         pass
-    # e.g. add: 我想要把加法功能修改成减法功能
+    # e.g. modify: 我想要把加法功能修改成减法功能
     if s.beginswith("modify"):
         # To Do: 
         pass
