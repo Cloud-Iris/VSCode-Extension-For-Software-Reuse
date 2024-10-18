@@ -1,5 +1,6 @@
 import uuid
 import requirement_tree_visitor as rtv
+import ollama
 
 # 假设需求树上的每个节点都对应一个类，每个内部节点需要调用子节点的接口、生成额外的代码来组合子节点的功能。
 # 有时子节点提供的接口不能满足父节点的组合需求，这时候父节点需要要求子节点添加相应的接口
@@ -50,7 +51,6 @@ class RequirementInternalNode(RequirementTreeNode):
             child.accept(visitor)
 
 
-
 # 叶子结点需要存储当前最小模块的实现代码
 class RequirementLeafNode(RequirementTreeNode):
     def __init__(self, en_name: str, ch_name: str, description: str, file_path: str):
@@ -59,6 +59,5 @@ class RequirementLeafNode(RequirementTreeNode):
     def accept(self, visitor):
         return visitor.visit_leaf(self)
     
-
 
 
