@@ -4,7 +4,8 @@ if TYPE_CHECKING:
     from requirement_tree_node import RequirementTreeNode, RequirementInternalNode, RequirementLeafNode
 
 import ollama
-
+import json
+import re
 
 class RequirementTreeVisitorBase:
     def __init__(self):
@@ -18,12 +19,16 @@ class RequirementTreeVisitorBase:
 
 
 class AddInterfaceVisitor(RequirementTreeVisitorBase):
+    @staticmethod
+    def extract_new_implementation_from_response(response: str) -> str:
+        matches = re.findall(r'```Python(.*?)```', response, re.DOTALL)
+        return matches[0].strip()
+    
     def __init__(self, requirement: str):
         self.requirement = requirement
     
     def visit_leaf(self, node: 'RequirementTreeNode'):
-        # TODO: 调用大模型，基于self.requirement修改子节点的代码
-        # node.code = ollama.chat(.......)
+        # 调用大模型，基于self.requirement修改子节点的代码
         prompt="""
         You are a top-notch Python programmer. 
         For the following requirement: {requirement}. 
@@ -34,18 +39,47 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
         Present only the refactored code.
         """.format(requirement=self.requirement,code=node.code)
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
-        node.code = res['message']['content']
+        node.code = AddInterfaceVisitor.extract_new_implementation_from_response(res['message']['content'])
     
     def visit_internal(self, node: 'RequirementInternalNode'):
-        # TODO: 内部节点可能也无法满足其父节点的要求，可能要递归地要求做子节点修改
-        # 检查当前节点是否可以满足父节点的要求
-        # satisfiable = ollama.chat(......)
-        satisfiable = True
-        if not satisfiable: # 递归地让子节点作出修改
-            # TODO: 这里把父节点的需求做一下转变
-            # node_requirement = ollama.chat(......, self.requirement)
-            node_requirement = self.requirement
-            node.require_child_add_interface(node_requirement)
+        sub_modules = []
+        for child in node.children:
+            sub_modules.append({
+                "module_name": child.en_name,
+                "module_code": child.code
+            })
+        sub_module_codes = json.dumps(sub_modules)
 
-        # TODO: 子节点不需要修改，或者已经修改好了，再来修改node
-        # node.code = ollama.chat(....)
+        prompt="""
+        You are a top-notch Python programmer. 
+        You have already written the following code: {code}
+        Now you have to refactor the code and provide more interfaces to satisfy the following requirement: {requirement}.
+        What you can do is to call the interfaces provided by the following submodules.
+        {sub_module_codes}
+        If the interface you need was not providede by the submodule, please let me know what kind of interface you actually need.        
+
+        Incorporate best practices and add comments where necessary. 
+        If the submodules satisfy your need, present only the refactored code. Otherwise, reply 'No, I need ...' and your requirement.
+        """.format(requirement=self.requirement, code=node.code, sub_module_codes=sub_module_codes)
+
+        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+
+        def extract_satisfiability_from_response(response: str) -> bool:
+            # TODO: 这里可能需要根据具体的情况做分析
+            return not response.startswith('No')
+        satisfiable = extract_satisfiability_from_response(res['message']['content'])
+
+        if not satisfiable: # 递归地让子节点作出修改
+            def extract_child_requirement_from_response(response: str) -> str:
+                # TODO: 这里把父节点的需求做一下转变
+                return re.findall(r'No, I need (.*?)', response)[0].strip()
+            node_requirement = extract_child_requirement_from_response(res['message']['content'])
+            node.require_child_add_interface(node_requirement)
+            # 现在子节点修理好了，再重新调用一遍
+            node.accept(self)
+        else:
+            # 子节点不需要修改
+            node.code = AddInterfaceVisitor.extract_new_implementation_from_response(res['message']['content'])
+
+
+
