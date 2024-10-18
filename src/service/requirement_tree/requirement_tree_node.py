@@ -20,8 +20,9 @@ class RequirementTreeNode:
         pass
 
     # 根据子节点和需求来构建当前节点的代码
-    def construct_code(self, requirement: str):
-        pass
+    def construct_code(self):
+        visitor = rtv.ConstructCodeVisitor()
+        self.accept(visitor)
 
 
 # 内部节点负责组合子节点的功能
@@ -47,15 +48,7 @@ class RequirementInternalNode(RequirementTreeNode):
                 child_.accept(visitor)
         else:
             child.accept(visitor)
-    
-    # 根据子节点的代码和当前节点的需求，构建当前节点的代码
-    def construct_code(self, requirement):
-        context = ""
-        for child in self.children:
-            context += child.code # TODO: 这里context需要其他的表示形式
-        context += requirement # TODO: 修改context的形式
-        # TODO: 调用LLM生成代码
-        # self.code = ollama.chat(context ....)
+
 
 
 # 叶子结点需要存储当前最小模块的实现代码
@@ -66,10 +59,6 @@ class RequirementLeafNode(RequirementTreeNode):
     def accept(self, visitor):
         return visitor.visit_leaf(self)
     
-    def construct_code(self, requirement):
-        context = requirement
-        # TODO: 调用LLM生成叶子结点的代码
-        # self.code = ollama.chat(context)
-        
+
 
 
