@@ -2,7 +2,7 @@ import json
 import ollama
 import re
 from prompt import role, task, one_shot
-# from requirement_tree.requirement_tree_node import RequirementTreeNode, RequirementInternalNode, RequirementLeafNode
+from requirement_tree.requirement_tree_node import RequirementTreeNode, RequirementInternalNode, RequirementLeafNode
 
 # 将用户输入的需求分类为create, modify, add, delete
 def requirements_classification(s:str) -> str:
@@ -54,9 +54,19 @@ def user_confirm():
     response = input("你确认执行吗[y]/n: ").strip().lower()
     return response == 'y' or response == ''
 
+# 将叶子结点转换为内部结点
+def convert_leaf_to_internal(leaf_node):
+    new_internal_node = RequirementInternalNode(leaf_node.en_name, leaf_node.ch_name, "新的描述（反映中间节点功能）", leaf_node.file_path, [])
+    if leaf_node.parent:
+        parent_node = leaf_node.parent
+        parent_node.replace_child(leaf_node, new_internal_node)
+    return new_internal_node
+
+
 def user_interaction():
     # 初始化根节点
-    # location = RequirementInternalNode("root", "根节点", "根节点", "root")
+    root = RequirementLeafNode('root', '根节点', '根节点的描述', '文件路径')
+    location = root
     print("你好，请问有什么我可以帮忙的吗：")
     s = input()
     while s.lower() not in ["no", "q", "quit", "exit"]:
@@ -65,6 +75,7 @@ def user_interaction():
         # e.g. 我想要添加所有的计算功能
         # e.g. 我想要在加法里面添加二进制加法功能
         if classify.startswith("add"):
+            convert_leaf_to_internal(location, RequirementLeafNode('leaf', 'leaf', 'leaf', 'leaf'))
             children = decompose_requirements(s)
             children = json.loads(children)
             # To Do: location节点更新，添加子节点，树状结构输出所有节点
