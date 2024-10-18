@@ -30,8 +30,7 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
         Present only the refactored code.
         """.format(requirement=self.requirement,code=node.code)
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
-        code = res['message']['content']
-        return code
+        node.code = res['message']['content']
     
     def visit_internal(self, node: RequirementInternalNode):
         # TODO: 内部节点可能也无法满足其父节点的要求，可能要递归地要求做子节点修改
