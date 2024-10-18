@@ -1,5 +1,6 @@
 import uuid
 import requirement_tree_visitor as rtv
+import ollama
 
 # 假设需求树上的每个节点都对应一个类，每个内部节点需要调用子节点的接口、生成额外的代码来组合子节点的功能。
 # 有时子节点提供的接口不能满足父节点的组合需求，这时候父节点需要要求子节点添加相应的接口
@@ -56,6 +57,14 @@ class RequirementInternalNode(RequirementTreeNode):
         context += requirement # TODO: 修改context的形式
         # TODO: 调用LLM生成代码
         # self.code = ollama.chat(context ....)
+        prompt="""
+        You are a proficient python programmer. 
+        For the following requirement: {requirement}. 
+        Write python code that is both readable and efficient. Comment on important sections of the code to enhance understanding. 
+        Output just the code.
+        """.format(requirement=requirement)
+        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        self.code = res['message']['content']
 
 
 # 叶子结点需要存储当前最小模块的实现代码
@@ -70,6 +79,14 @@ class RequirementLeafNode(RequirementTreeNode):
         context = requirement
         # TODO: 调用LLM生成叶子结点的代码
         # self.code = ollama.chat(context)
-        
+        prompt="""
+        You are a proficient python programmer. 
+        For the following requirement: {requirement}. 
+        Write python code that is both readable and efficient. Comment on important sections of the code to enhance understanding. 
+        Output just the code.
+        """.format(requirement=requirement)
+        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        code = res['message']['content']
+        return code
 
 
