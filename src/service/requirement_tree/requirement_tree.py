@@ -1,13 +1,13 @@
-import requirement_tree_node as rtn
+import requirement_tree.requirement_tree_node as rtn
 
 
 class RequirementTree:
-    def __init__(self, project_name: str, project_description: str, file_path: str):
+    def __init__(self, project_en_name: str='', project_ch_name: str='', project_description: str='', file_path: str=''):
         """
         接口1: 创建一棵空树
         @param file_path: 在插件里才能用到，目前直接传入空字符串
         """
-        self.root = rtn.RequirementInternalNode(project_name, '', project_description, file_path)
+        self.root = rtn.RequirementInternalNode(project_en_name, project_ch_name, project_description, file_path)
         self.current_node = self.root
 
     def get_current_node(self) -> rtn.RequirementTreeNode:
@@ -19,6 +19,9 @@ class RequirementTree:
         @param file_path: 在插件里才能用到，目前直接传入空字符串
         @return: 返回新添加的节点
         """
+        for child in self.current_node.children:
+            if child.en_name == child_en_name:
+                return None
         child = rtn.RequirementInternalNode(child_en_name, child_ch_name, child_description, file_path)
         self.current_node.add_child(child)
         return child
@@ -65,7 +68,7 @@ class RequirementTree:
         if new_en_name is not None:
             self.current_node.en_name = new_en_name
         if new_ch_name is not None:
-            self.current_node.en_name = new_ch_name
+            self.current_node.ch_name = new_ch_name
         if new_description is not None:
             self.current_node.description = new_description
         if new_code is not None:
