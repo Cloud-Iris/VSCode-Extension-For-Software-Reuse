@@ -1,3 +1,4 @@
-from decompose_requirements import user_interaction
+from decompose_requirements import RequirementManager
 if __name__ == "__main__":
-    user_interaction()
+    manager = RequirementManager()
+    manager.user_interaction()
