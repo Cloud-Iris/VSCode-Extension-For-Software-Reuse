@@ -190,5 +190,3 @@ def user_interaction():
 
         print("你好，请问你要对这个节点进行什么操作？输入q/quit/exit/no退出系统。")
         s = input()
-
-user_interaction()
