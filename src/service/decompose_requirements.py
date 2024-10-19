@@ -267,9 +267,11 @@ class RequirementManager:
                 print("=====================")
             
             elif classify.startswith("code"):
+                s=input("请输入存放代码的根目录路径：")
                 # 生成当前节点的代码
                 self.tree.current_node = self.tree.root
-                code = self.tree.construct_current_code()
+                print("开始生成代码...")
+                code = self.tree.construct_current_code(filepath=s)
                 print(f"=====================\n所有代码生成完毕，根节点的代码如下所示：\n=====================\n{code}\n=====================")
             
             elif classify.startswith("show"):

@@ -78,7 +78,7 @@ class RequirementTree:
         if new_file_path is not None:
             self.current_node.file_path = new_file_path
 
-    def construct_current_code(self, callback=None) -> str:
+    def construct_current_code(self, filepath="D://",callback=None) -> str:
         """
         接口6: 生成当前节点的代码
         @param callback: 暂时不用传，考虑到模型可能会修改子模块，我们需要用户确认这些修改，所以要添加一个callback获取用户反馈。但目前还不支持这样的功能
@@ -129,7 +129,7 @@ class RequirementTree:
         self.current_node.construct_code()
 
         # 创建文件夹和文件
-        create_directory_and_files(self.current_node, os.getcwd(), [])
+        create_directory_and_files(self.current_node, filepath, [])
 
         return self.current_node.code
 
