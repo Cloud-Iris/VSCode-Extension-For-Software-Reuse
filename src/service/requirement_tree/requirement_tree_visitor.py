@@ -29,7 +29,7 @@ def extract_submodule_codes(node: 'RequirementInternalNode') -> str:
     sub_modules = []
     for child in node.children:
         sub_modules.append({
-            "module_name": child.en_name,
+            # "module_name": child.en_name,
             "module_code": child.code
         })
     return json.dumps(sub_modules)
@@ -65,13 +65,13 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
     
     def visit_internal(self, node: 'RequirementInternalNode'):
         
-        prompt="""
+        prompt = """
         You are a top-notch Python programmer. 
         You have already written the following code: {code}
         Now you have to refactor the code and provide more interfaces to satisfy the following requirement: {requirement}.
         What you can do is to call the interfaces provided by the following submodules.
         {sub_module_codes}
-        If the interface you need was not providede by the submodule, please let me know what kind of interface you actually need.        
+        If the interface you need was not provided by the submodule, please let me know what kind of interface you actually need.        
 
         Incorporate best practices and add comments where necessary. 
         If the submodules satisfy your need, present only the refactored code. Otherwise, reply 'No, I need ...' and your requirement.
@@ -128,6 +128,7 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
         else:
             # 子节点不需要修改
             node.code = extract_new_implementation_from_response(res['message']['content'])
+
 
 
 

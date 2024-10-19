@@ -1,5 +1,7 @@
+import ollama
 import requirement_tree.requirement_tree_node as rtn
-
+from requirement_tree.requirement_tree_visitor import extract_new_implementation_from_response
+import os
 
 class RequirementTree:
     def __init__(self, project_en_name: str='', project_ch_name: str='', project_description: str='', file_path: str=''):
@@ -76,7 +78,6 @@ class RequirementTree:
         if new_file_path is not None:
             self.current_node.file_path = new_file_path
 
-    
     def construct_current_code(self, callback=None) -> str:
         """
         接口6: 生成当前节点的代码
@@ -85,14 +86,51 @@ class RequirementTree:
         """
         # TODO: 添加用户反馈
 
-        if(len(self.current_node.children) == 0):
-            # 应该是一个叶子结点
+        def create_directory_and_files(node, path, imports):
+            """
+            递归创建文件夹和文件
+            @param node: 当前节点
+            @param path: 当前路径
+            @param imports: 导入语句列表
+            """
+            # 创建当前节点的文件夹
+            current_path = os.path.join(path, node.en_name)
+            os.makedirs(current_path, exist_ok=True)
+
+            # 如果是叶子节点，创建文件
+            if len(node.children) == 0:
+                file_path = os.path.join(current_path, f"{node.en_name}.py")
+                with open(file_path, 'w') as file:
+                    file.write(node.code)
+                return
+
+            # 递归处理子节点
+            for child in node.children:
+                create_directory_and_files(child, current_path, imports)
+                # 添加导入语句
+                imports.append(f"from {child.en_name}.{child.en_name} import *")
+
+            # 回溯时创建当前节点的文件
+            file_path = os.path.join(current_path, f"{node.en_name}.py")
+            with open(file_path, 'w') as file:
+                # 写入导入语句
+                file.write("\n".join(imports) + "\n\n")
+                file.write(node.code)
+
+        # 如果当前节点是叶子节点，转换为叶子节点
+        if len(self.current_node.children) == 0:
             parent: rtn.RequirementInternalNode = self.current_node.parent
             leaf = self.current_node.convert_to_leaf_node()
             parent.remove_child(leaf.en_name)
             parent.add_child(leaf)
             self.current_node = leaf
+
+        # 生成代码
         self.current_node.construct_code()
+
+        # 创建文件夹和文件
+        create_directory_and_files(self.current_node, os.getcwd(), [])
+
         return self.current_node.code
 
     def convert_leaf_to_internal(self, leaf_node: rtn.RequirementLeafNode):

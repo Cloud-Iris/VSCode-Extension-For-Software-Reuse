@@ -3,11 +3,12 @@ import ollama
 import re
 from prompt import role, task, one_shot
 from requirement_tree.requirement_tree import RequirementTree
+from requirement_tree.requirement_tree_visitor import extract_new_implementation_from_response
 
 class RequirementManager:
     def __init__(self):
         self.tree = None
-        self.node_names = None
+        self.node_names = ""
 
     def requirements_classification(self, s: str) -> str:
         """
@@ -116,7 +117,7 @@ class RequirementManager:
         lines = description.split('\n')
 
         # 这是llama3的特点，第三行才是中文名
-        en_name = lines[0] if len(lines) > 0 else ""
+        en_name = re.sub(r'[^a-zA-Z]', '', lines[0].replace(" ","")) if len(lines) > 0 else ""
         ch_name = lines[2] if len(lines) > 1 else ""
         detailed_description = "\n".join(lines[4:]) if len(lines) > 2 else ""
 
@@ -157,28 +158,36 @@ class RequirementManager:
         """
 
         prompt = """
-        You are a top-notch selection expert. 
+        You are a top-notch language expert. 
         For the following requirement: {requirement}. 
-        From the following list of node names, select the one that best matches the requirement. If not found, please return None.:
-        {node_names}
-
-        Only return the full name of the selected node.
-        """.format(requirement=s, node_names="\n".join(self.node_names))
+        Return only the full name of the selected name in Simple Chinese without Spaces.
+        From the list of names below, select the one that best meets your needs. If None is found, return None. You cannot return a name that is not in the list:
+        [{node_names}]
+        """.format(requirement=s, node_names=self.node_names)
         
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
-        selected_node_name = res['message']['content'].strip().replace(" ", "")
+        selected_node_name = res['message']['content'].strip()
 
         # print(f"=====================\n您选择的节点是：{selected_node_name}\n=====================")
 
+        if self.tree.current_node==None:
+            return None
+
         # 先看当前节点是不是
         if self.tree.current_node.ch_name in selected_node_name or selected_node_name in self.tree.current_node.ch_name:
+            if self.tree.current_node.ch_name not in self.node_names:
+                return None
             return self.tree.current_node
         # 再看当前节点的父节点是不是
         if self.tree.current_node.parent and (self.tree.current_node.parent.ch_name in selected_node_name or selected_node_name in self.tree.current_node.parent.ch_name) :
+            if self.tree.current_node.ch_name not in self.node_names:
+                return None
             return self.tree.current_node.parent
         # 再看当前节点的子节点是不是
         for child in self.tree.current_node.children:
             if child.ch_name in selected_node_name or selected_node_name in child.ch_name:
+                if self.tree.current_node.ch_name not in self.node_names:
+                    return None
                 return child
         # 最后dfs搜索整个树
         return self.dfs_search_node_name(self.tree.root, selected_node_name)        
@@ -208,7 +217,7 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
-                    self.tree.add_child(child['enName'], child['name'], child['description'], '')
+                    self.tree.add_child(child['enName'].replace(" ",""), child['name'].replace("增加","").replace("添加",""), child['description'], '')
                 
                 # 显示当前树结构
                 print("\n=====================\n当前树结构如下：\n=====================")
@@ -226,13 +235,14 @@ class RequirementManager:
                         self.tree.current_node = self.tree.current_node.parent
                         self.tree.remove_child(name)
                     else:
-                        not_delete.append(self.tree.current_node)
-                    
+                        not_delete.append(self.tree.current_node.ch_name)
+                    print(not_delete)
                     # 更新树结构并显示
                     self.node_names = self.display_tree(self.tree.root, 0, False)
                     # 从self.node_names中删除not_delete
-                    for node in not_delete:
-                        self.node_names = self.node_names.replace(node.ch_name, "")
+                    for node_name in not_delete:
+                        self.node_names = self.node_names.replace(node_name, "")
+                    print(self.node_names)
                     self.tree.current_node = self.location_node(s)
                 
                 # 显示当前树结构
