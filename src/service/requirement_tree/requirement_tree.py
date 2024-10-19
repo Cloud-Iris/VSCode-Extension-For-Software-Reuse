@@ -13,13 +13,13 @@ class RequirementTree:
     def get_current_node(self) -> rtn.RequirementTreeNode:
         return self.current_node
 
-    def add_child(self, child_name: str, child_description: str, file_path: str) -> rtn.RequirementTreeNode:
+    def add_child(self, child_en_name: str, child_ch_name, child_description: str, file_path: str) -> rtn.RequirementTreeNode:
         """
         接口3.1: 给当前节点添加子节点
         @param file_path: 在插件里才能用到，目前直接传入空字符串
         @return: 返回新添加的节点
         """
-        child = rtn.RequirementInternalNode(child_name, '', child_description, file_path)
+        child = rtn.RequirementInternalNode(child_en_name, child_ch_name, child_description, file_path)
         self.current_node.add_child(child)
         return child
     
@@ -55,15 +55,17 @@ class RequirementTree:
                 self.current_node = child
         return self.current_node
     
-    def modify_current_node(self, new_name=None, new_description=None, new_code=None, new_file_path=None):
+    def modify_current_node(self, new_en_name=None, new_ch_name=None, new_description=None, new_code=None, new_file_path=None):
         """
         接口5: 修改当前节点
         不需要修改的信息直接传None，或者不传
         """
         # TODO: 这里可能需要向上或者向下传播一下更新
 
-        if new_name is not None:
-            self.current_node.en_name = new_name
+        if new_en_name is not None:
+            self.current_node.en_name = new_en_name
+        if new_ch_name is not None:
+            self.current_node.en_name = new_ch_name
         if new_description is not None:
             self.current_node.description = new_description
         if new_code is not None:
@@ -90,4 +92,21 @@ class RequirementTree:
         self.current_node.construct_code()
         return self.current_node.code
 
+    def convert_leaf_to_internal(self, leaf_node: rtn.RequirementLeafNode):
+        """
+        接口7: 将叶子结点转换为内部结点
+        @param leaf_node: 要转换的叶子结点
+        @description: 
+            如果传入的节点已经是内部结点，则不进行任何操作。
+            否则，会创建一个新的内部结点，并将其替换为原来的叶子结点。如果叶子结点有父节点，
+            则会在父节点中进行替换操作。最后，将当前节点更新为新的内部结点。
+        """
+        if type(leaf_node) == rtn.RequirementInternalNode:
+            return
+        new_internal_node = rtn.RequirementInternalNode(leaf_node.en_name, leaf_node.ch_name, "新的描述（反映中间节点功能）", leaf_node.file_path, [])
+        if leaf_node.parent:
+            parent_node = leaf_node.parent
+            parent_node.remove_child(leaf_node)
+            parent_node.add_child(new_internal_node)
+        self.current_node = new_internal_node
 
