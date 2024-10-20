@@ -1,9 +1,7 @@
 import requirement_tree.requirement_tree_node as rtn
 import os
 import time
-from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-import threading
 
 class RequirementTree:
     def __init__(self, project_en_name: str='', project_ch_name: str='', project_description: str='', file_path: str=''):
@@ -37,6 +35,18 @@ class RequirementTree:
         @return: 是否删除成功
         """
         return self.current_node.remove_child(child_name)
+    
+    def remove_node(self) -> bool:
+        """
+        接口3.3: 删除当前节点
+        @return: 是否删除成功
+        """
+        parent = self.current_node.parent
+        if parent is None:
+            return False
+        return_value=parent.remove_child(self.current_node.ch_name)
+        self.current_node=parent
+        return return_value
     
     def get_child_with_name(self, child_name: str) -> rtn.RequirementTreeNode:
         """
@@ -98,6 +108,7 @@ class RequirementTree:
             file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")
             with open(file_path, 'w') as file:
                 file.write(node.code)
+            node.file_path = file_path
             self.file_node_map[file_path] = node
             return
 
@@ -113,6 +124,7 @@ class RequirementTree:
             # 写入导入语句
             file.write("\n".join(imports) + "\n\n")
             file.write(node.code)
+        node.file_path = file_path
         self.file_node_map[file_path] = node
 
     def construct_current_code(self, filepath,callback=None) -> str:
@@ -161,12 +173,15 @@ class FileChangeHandler(FileSystemEventHandler):
     """
     文件修改事件处理器，用于监听文件修改事件并更新对应节点的代码。
     """
-    def __init__(self, node_map):
+    def __init__(self, node_map, tree):
         """
         初始化 FileChangeHandler 实例。
         @param node_map: 文件名到节点的映射
+        @param tree: 树结构，用于删除节点
         """
         self.node_map = node_map
+        self.tree = tree
+        self.last_modified = {}
 
     def on_modified(self, event):
         """
@@ -178,6 +193,17 @@ class FileChangeHandler(FileSystemEventHandler):
 
         file_path = event.src_path
 
+        # 打印事件类型以进行调试
+        print(f"Event type: {event.event_type}, File: {file_path}")
+
+        # 去重处理，确保同一个文件在短时间内只处理一次
+        current_time = time.time()
+        if file_path in self.last_modified:
+            if current_time - self.last_modified[file_path] < 1:  # 1秒内的重复事件忽略
+                return
+
+        self.last_modified[file_path] = current_time
+
         # 如果文件是 Python 文件且在 node_map 中，更新节点的代码
         if file_path.endswith('.py') and file_path in self.node_map:
             with open(file_path, 'r') as file:
@@ -185,29 +211,21 @@ class FileChangeHandler(FileSystemEventHandler):
                 self.node_map[file_path].code = code
                 print(f"Updated code for node: {file_path}")
 
-def start_watching(directory, node_map):
-    """
-    启动文件监听器，监听指定目录中的文件修改事件。
-    @param directory: 要监听的目录
-    @param node_map: 文件名到节点的映射
-    """
-    event_handler = FileChangeHandler(node_map)
-    observer = Observer()
-    observer.schedule(event_handler, directory, recursive=True)
-    observer.start()
-
-    def run_observer():
+    def on_deleted(self, event):
         """
-        运行文件监听器的线程。
+        当文件被删除时调用。
+        @param event: 文件系统事件
         """
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            observer.stop()
-        observer.join()
+        if event.is_directory:
+            return
 
-    # 启动一个新的线程来运行文件监听器
-    observer_thread = threading.Thread(target=run_observer)
-    observer_thread.daemon = True
-    observer_thread.start()
+        file_path = event.src_path
+
+        # 如果文件在 node_map 中，移除对应的节点
+        if file_path in self.node_map:
+            node = self.node_map[file_path]
+            del self.node_map[file_path]
+            print(f"Removed node for deleted file: {file_path}")
+            # 从树结构中删除对应的节点
+            self.tree.current_node = node
+            self.tree.remove_node()

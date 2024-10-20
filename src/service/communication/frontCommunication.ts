@@ -26,20 +26,21 @@ export async function sendFolderPathToBackend() {
 
     // 轮询等待后端服务器启动
     const maxRetries = 10;
-    const retryInterval = 2000; // 2 seconds
+    const retryInterval = 1000; // 1 seconds
 
-    // 睡眠0.1秒
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // 睡眠2秒
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     for (let i = 0; i < maxRetries; i++) {
         try {
+            // 后端服务器已启动，发送文件路径
             const response = await axios.post('http://localhost:5000/receive-folder-path', {
                 folderPath: currentFolderPath
             });
             console.log('Response from backend:', response.data);
             return; // 成功后退出函数
         } catch (error) {
-            console.error('Error sending folder path to backend, retrying...', error);
+            console.error('Error checking backend health, retrying...', error);
             await new Promise(resolve => setTimeout(resolve, retryInterval));
         }
     }

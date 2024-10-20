@@ -13,8 +13,12 @@ class BackendService:
         def receive_folder_path():
             data = request.get_json()
             self.parsed_str = data.get('folderPath', '')
-            print(self.parsed_str)
+            print("项目根目录是: "+self.parsed_str)
             return jsonify({'parsedStr': self.parsed_str})
+
+        @self.app.route('/health-check', methods=['GET'])
+        def health_check():
+            return jsonify({'status': 'ok'})
 
         @self.app.after_request
         def after_request(response):

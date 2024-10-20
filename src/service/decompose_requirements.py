@@ -1,8 +1,11 @@
 import json
 import ollama
 import re
-from prompt import role, task, one_shot, location_node_example, init_tree_example
-from requirement_tree.requirement_tree import RequirementTree, start_watching
+from prompt import role, task, one_shot, location_node_example, init_tree_example, classify_example
+from requirement_tree.requirement_tree import RequirementTree, FileChangeHandler
+from watchdog.observers import Observer
+import threading
+import time
 
 class RequirementManager:
     def __init__(self, filepath):
@@ -14,7 +17,11 @@ class RequirementManager:
         """
         将用户输入的需求分类为create, modify, add, delete, code, show
         """
-        prompt = f"Classify the following requirement into one of the categories: modify, add, delete, code, show_information. Only one word is returned. \nRequirement: {s}"
+
+        prompt = """Classify the following requirement into one of the categories: modify, add, delete, code, show_information. Only one word is returned.
+        Requirement: {s}
+        {classify_example}
+        """.format(requirement=s, classify_example=classify_example)
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         classification = res['message']['content'].lower()
         if "modify" in classification:
@@ -28,7 +35,7 @@ class RequirementManager:
         elif "show_information" in classification:
             return "show"
         else:
-            raise ValueError("Unable to classify the requirement.")
+            return None
 
     def decompose_requirements(self, input):
         """
@@ -156,6 +163,34 @@ class RequirementManager:
                     return result
         return None
 
+    def start_watching(self):
+        """
+        启动文件监听器，监听指定目录中的文件修改事件。
+        @param directory: 要监听的目录
+        @param node_map: 文件名到节点的映射
+        """
+        event_handler = FileChangeHandler(self.tree.file_node_map, self.tree)
+        observer = Observer()
+        print("file_path: ", self.filepath)
+        observer.schedule(event_handler, self.filepath, recursive=True)
+        observer.start()
+
+        def run_observer():
+            """
+            运行文件监听器的线程。
+            """
+            try:
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                observer.stop()
+            observer.join()
+
+        # 启动一个新的线程来运行文件监听器
+        observer_thread = threading.Thread(target=run_observer)
+        observer_thread.daemon = True
+        observer_thread.start()
+
     def location_node(self, s):
         """
         根据用户输入的需求描述，定位到树中的一个节点
@@ -241,9 +276,7 @@ class RequirementManager:
                     self.display_node("您想要删除的节点信息如下所示", self.tree.current_node)
                     response = input("你确认永久删除{}吗[y]/n: ".format(self.tree.current_node.ch_name)).strip().lower()
                     if response == 'y' or response == '':
-                        name = self.tree.current_node.ch_name
-                        self.tree.current_node = self.tree.current_node.parent
-                        self.tree.remove_child(name)
+                        self.tree.current_node.remove_node()
                     else:
                         not_delete.append(self.tree.current_node.ch_name)
                     # print(not_delete)
@@ -281,15 +314,19 @@ class RequirementManager:
                 # 生成当前节点的代码
                 self.tree.current_node = self.tree.root
                 print("开始在目录{}生成代码...".format(self.filepath))
-                code = self.tree.construct_current_code(self.filepath)
-                start_watching(self.filepath, self.tree.file_node_map)
+                self.tree.construct_current_code(self.filepath)
+                self.start_watching()
                 print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
             
             elif classify.startswith("show"):
                 self.display_node("您想要的节点信息如下所示", self.tree.current_node)
 
             else:
-                print("对不起，我无法理解您的需求，请详细描述您的需求。")
+                # 显示当前树结构
+                print("\n=====================\n当前树结构如下：\n=====================")
+                self.node_names = self.display_tree(self.tree.root)
+                print("=====================")
+                print("对不起，我无法理解您的需求，请基于树结构详细描述您的需求。")
             
             # 询问用户是否有进一步的需求
             print("\n请问您有什么进一步的需求？输入q/quit/exit/no退出系统。")

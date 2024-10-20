@@ -24,6 +24,16 @@ Node_names: [计算器, 增加操作, 减法操作, 乘法操作, 除法操作, 
 #####################################
 Output:
 绝对值运算
+#####################################
+"""
+
+classify_example="""
+The folling is an example of the input and output:
+####################################
+Requirement: 我想要删除绝对值运算
+#####################################
+Output: delete
+#####################################
 """
 
 init_tree_example="""
@@ -62,7 +72,6 @@ A calculator is a device or software application designed to perform mathematica
 
 In summary, a calculator is a versatile tool that provides quick and accurate mathematical calculations for a wide range of applications.
 """
-
 
 one_shot="""
 
