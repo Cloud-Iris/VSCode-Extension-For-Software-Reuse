@@ -318,7 +318,7 @@ class RequirementManager:
                 print("开始在目录{}生成代码...".format(self.filepath))
                 self.tree.construct_current_code(self.filepath)
                 # 创建文件夹和文件
-                create_directory_and_files(self.current_node, self.filepath, [])
+                create_directory_and_files(self.tree.file_node_map,self.current_node, self.filepath, [])
                 self.start_watching()
                 print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
             
