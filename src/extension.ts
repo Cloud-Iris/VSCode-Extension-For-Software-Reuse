@@ -1,12 +1,15 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { sendFolderPathToBackend } from './service/communication/frontCommunication';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "software-reuse-extension" is now active!');
 
     // 在显示 showSidebar Webview 前保存编辑器状态
     saveEditorState();
+
+    sendFolderPathToBackend();
 
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider('myWebviewView', new MyWebviewViewProvider(context))

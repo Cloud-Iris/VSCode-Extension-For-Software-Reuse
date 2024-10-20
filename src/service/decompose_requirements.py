@@ -2,13 +2,13 @@ import json
 import ollama
 import re
 from prompt import role, task, one_shot
-from requirement_tree.requirement_tree import RequirementTree
-from requirement_tree.requirement_tree_visitor import extract_new_implementation_from_response
+from requirement_tree.requirement_tree import RequirementTree, start_watching
 
 class RequirementManager:
-    def __init__(self):
+    def __init__(self, filepath):
         self.tree = None
         self.node_names = ""
+        self.filepath = filepath
 
     def requirements_classification(self, s: str) -> str:
         """
@@ -225,7 +225,7 @@ class RequirementManager:
                 print("=====================")
             
             elif classify.startswith("delete"):
-                not_delete = []
+                not_delete = [self.tree.root.ch_name]
                 # 循环删除节点，直到用户确认删除
                 while self.tree.current_node is not None:
                     self.display_node("您想要删除的节点信息如下所示", self.tree.current_node)
@@ -236,13 +236,13 @@ class RequirementManager:
                         self.tree.remove_child(name)
                     else:
                         not_delete.append(self.tree.current_node.ch_name)
-                    print(not_delete)
+                    # print(not_delete)
                     # 更新树结构并显示
                     self.node_names = self.display_tree(self.tree.root, 0, False)
                     # 从self.node_names中删除not_delete
                     for node_name in not_delete:
                         self.node_names = self.node_names.replace(node_name, "")
-                    print(self.node_names)
+                    # print(self.node_names)
                     self.tree.current_node = self.location_node(s)
                 
                 # 显示当前树结构
@@ -267,11 +267,11 @@ class RequirementManager:
                 print("=====================")
             
             elif classify.startswith("code"):
-                s=input("请输入存放代码的根目录路径：")
                 # 生成当前节点的代码
                 self.tree.current_node = self.tree.root
                 print("开始生成代码...")
-                code = self.tree.construct_current_code(filepath=s)
+                code = self.tree.construct_current_code(self.filepath)
+                start_watching(s, self.tree.file_node_map)
                 print(f"=====================\n所有代码生成完毕，根节点的代码如下所示：\n=====================\n{code}\n=====================")
             
             elif classify.startswith("show"):

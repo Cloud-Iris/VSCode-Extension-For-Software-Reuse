@@ -1,4 +1,4 @@
-from decompose_requirements import RequirementManager
+from communication.backendCommunication import BackendService
 if __name__ == "__main__":
-    manager = RequirementManager()
-    manager.user_interaction()
+    backend_service = BackendService()
+    backend_service.run()

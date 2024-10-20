@@ -1,7 +1,9 @@
-import ollama
 import requirement_tree.requirement_tree_node as rtn
-from requirement_tree.requirement_tree_visitor import extract_new_implementation_from_response
 import os
+import time
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import threading
 
 class RequirementTree:
     def __init__(self, project_en_name: str='', project_ch_name: str='', project_description: str='', file_path: str=''):
@@ -11,6 +13,7 @@ class RequirementTree:
         """
         self.root = rtn.RequirementInternalNode(project_en_name, project_ch_name, project_description, file_path)
         self.current_node = self.root
+        self.file_node_map = {}
 
     def get_current_node(self) -> rtn.RequirementTreeNode:
         return self.current_node
@@ -78,44 +81,47 @@ class RequirementTree:
         if new_file_path is not None:
             self.current_node.file_path = new_file_path
 
-    def construct_current_code(self, filepath="D://",callback=None) -> str:
+    def create_directory_and_files(self, node, path, imports):
+        """
+        递归创建文件夹和文件
+        @param node: 当前节点
+        @param path: 当前路径
+        @param imports: 导入语句列表
+        @param file_node_map: 文件路径到节点的映射
+        """
+        # 创建当前节点的文件夹
+        current_path = os.path.join(path, node.en_name.replace(" ", "_"))
+        os.makedirs(current_path, exist_ok=True)
+
+        # 如果是叶子节点，创建文件
+        if len(node.children) == 0:
+            file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")
+            with open(file_path, 'w') as file:
+                file.write(node.code)
+            self.file_node_map[file_path] = node
+            return
+
+        # 递归处理子节点
+        for child in node.children:
+            self.create_directory_and_files(child, current_path, imports)
+            # 添加导入语句
+            imports.append(f"from .{child.en_name.replace(' ', '_')} import *")
+
+        # 回溯时创建当前节点的文件
+        file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")
+        with open(file_path, 'w') as file:
+            # 写入导入语句
+            file.write("\n".join(imports) + "\n\n")
+            file.write(node.code)
+        self.file_node_map[file_path] = node
+
+    def construct_current_code(self, filepath,callback=None) -> str:
         """
         接口6: 生成当前节点的代码
         @param callback: 暂时不用传，考虑到模型可能会修改子模块，我们需要用户确认这些修改，所以要添加一个callback获取用户反馈。但目前还不支持这样的功能
         @return: 返回当前节点的代码
         """
         # TODO: 添加用户反馈
-
-        def create_directory_and_files(node, path, imports):
-            """
-            递归创建文件夹和文件
-            @param node: 当前节点
-            @param path: 当前路径
-            @param imports: 导入语句列表
-            """
-            # 创建当前节点的文件夹
-            current_path = os.path.join(path, node.en_name)
-            os.makedirs(current_path, exist_ok=True)
-
-            # 如果是叶子节点，创建文件
-            if len(node.children) == 0:
-                file_path = os.path.join(current_path, f"{node.en_name}.py")
-                with open(file_path, 'w') as file:
-                    file.write(node.code)
-                return
-
-            # 递归处理子节点
-            for child in node.children:
-                create_directory_and_files(child, current_path, imports)
-                # 添加导入语句
-                imports.append(f"from {child.en_name}.{child.en_name} import *")
-
-            # 回溯时创建当前节点的文件
-            file_path = os.path.join(current_path, f"{node.en_name}.py")
-            with open(file_path, 'w') as file:
-                # 写入导入语句
-                file.write("\n".join(imports) + "\n\n")
-                file.write(node.code)
 
         # 如果当前节点是叶子节点，转换为叶子节点
         if len(self.current_node.children) == 0:
@@ -129,7 +135,7 @@ class RequirementTree:
         self.current_node.construct_code()
 
         # 创建文件夹和文件
-        create_directory_and_files(self.current_node, filepath, [])
+        self.create_directory_and_files(self.current_node, filepath, [])
 
         return self.current_node.code
 
@@ -151,3 +157,57 @@ class RequirementTree:
             parent_node.add_child(new_internal_node)
         self.current_node = new_internal_node
 
+class FileChangeHandler(FileSystemEventHandler):
+    """
+    文件修改事件处理器，用于监听文件修改事件并更新对应节点的代码。
+    """
+    def __init__(self, node_map):
+        """
+        初始化 FileChangeHandler 实例。
+        @param node_map: 文件名到节点的映射
+        """
+        self.node_map = node_map
+
+    def on_modified(self, event):
+        """
+        当文件被修改时调用。
+        @param event: 文件系统事件
+        """
+        if event.is_directory:
+            return
+
+        file_path = event.src_path
+
+        # 如果文件是 Python 文件且在 node_map 中，更新节点的代码
+        if file_path.endswith('.py') and file_path in self.node_map:
+            with open(file_path, 'r') as file:
+                code = file.read()
+                self.node_map[file_path].code = code
+                print(f"Updated code for node: {file_path}")
+
+def start_watching(directory, node_map):
+    """
+    启动文件监听器，监听指定目录中的文件修改事件。
+    @param directory: 要监听的目录
+    @param node_map: 文件名到节点的映射
+    """
+    event_handler = FileChangeHandler(node_map)
+    observer = Observer()
+    observer.schedule(event_handler, directory, recursive=True)
+    observer.start()
+
+    def run_observer():
+        """
+        运行文件监听器的线程。
+        """
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
+
+    # 启动一个新的线程来运行文件监听器
+    observer_thread = threading.Thread(target=run_observer)
+    observer_thread.daemon = True
+    observer_thread.start()
