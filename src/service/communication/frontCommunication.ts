@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import axios from 'axios';
-import { spawn } from 'child_process';
 
 let hasExecuted = false;
 
@@ -10,20 +9,12 @@ export async function sendFolderPathToBackend() {
     }
     hasExecuted = true;
 
-    // 打开命令行并运行指定的 Python 脚本
-    const pythonProcess = spawn('cmd', ['/c', 'start', 'cmd', '/k', 'D:/usualsoft/anaconda/envs/reuse-tree/python.exe', 'D:\\learn\\pku_work\\lowcode\\20241017-demo\\VSCode-Extension-For-Software-Reuse\\src\\service\\main.py']);
-
-    pythonProcess.on('error', (error) => {
-        console.error(`Error executing Python script: ${error.message}`);
-    });
-
-    pythonProcess.stdout.on('data', (data) => {
-        console.log(`Python script stdout: ${data}`);
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-        console.error(`Python script stderr: ${data}`);
-    });
+    // 创建一个新的 VSCode 集成终端并运行指定的 Python 脚本
+    const terminal = vscode.window.createTerminal('Python Script');
+    const pythonPath = 'D:/usualsoft/anaconda/envs/reuse-tree/python.exe';
+    const scriptPath = 'D:/learn/pku_work/lowcode/20241017-demo/VSCode-Extension-For-Software-Reuse/src/service/main.py';
+    terminal.sendText(`${pythonPath} ${scriptPath}`);
+    terminal.show();
 
     // 获取当前工作区的文件夹路径
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -37,6 +28,9 @@ export async function sendFolderPathToBackend() {
     const maxRetries = 10;
     const retryInterval = 2000; // 2 seconds
 
+    // 睡眠0.1秒
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     for (let i = 0; i < maxRetries; i++) {
         try {
             const response = await axios.post('http://localhost:5000/receive-folder-path', {
@@ -45,7 +39,7 @@ export async function sendFolderPathToBackend() {
             console.log('Response from backend:', response.data);
             return; // 成功后退出函数
         } catch (error) {
-            // console.error('Error sending folder path to backend, retrying...', error);
+            console.error('Error sending folder path to backend, retrying...', error);
             await new Promise(resolve => setTimeout(resolve, retryInterval));
         }
     }

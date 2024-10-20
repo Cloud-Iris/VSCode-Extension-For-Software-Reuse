@@ -12,9 +12,7 @@ class BackendService:
         @self.app.route('/receive-folder-path', methods=['POST'])
         def receive_folder_path():
             data = request.get_json()
-            folder_path = data.get('folderPath', '')
-            # 解析出一个字符串，这里假设你只是返回路径本身
-            self.parsed_str = f"Received folder path: {folder_path}"
+            self.parsed_str = data.get('folderPath', '')
             print(self.parsed_str)
             return jsonify({'parsedStr': self.parsed_str})
 

@@ -105,7 +105,7 @@ class RequirementTree:
         for child in node.children:
             self.create_directory_and_files(child, current_path, imports)
             # 添加导入语句
-            imports.append(f"from .{child.en_name.replace(' ', '_')} import *")
+            imports.append(f"from {child.en_name.replace(' ', '_')}.{child.en_name.replace(' ', '_')} import *")
 
         # 回溯时创建当前节点的文件
         file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")

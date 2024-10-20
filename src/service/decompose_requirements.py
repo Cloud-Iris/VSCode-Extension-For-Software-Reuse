@@ -1,7 +1,7 @@
 import json
 import ollama
 import re
-from prompt import role, task, one_shot
+from prompt import role, task, one_shot, location_node_example, init_tree_example
 from requirement_tree.requirement_tree import RequirementTree, start_watching
 
 class RequirementManager:
@@ -103,25 +103,29 @@ class RequirementManager:
         """
         prompt = """
         You are a top-notch description expert. 
-        For the following requirement: {requirement}. 
+        Requirement: {requirement}. 
 
         Return the following information:
         First line: The English name of the requirement.
         Second line: The Chinese name of the requirement.
-        Other line: A detailed description to satisfy the requirement.
+        Other lines: A detailed description to satisfy the requirement.
 
-        Incorporate best practices and add comments where necessary.
-        """.format(requirement=s)
+        {init_tree_example}
+        """.format(requirement=s, init_tree_example=init_tree_example)
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         description = res['message']['content'].strip()
         lines = description.split('\n')
 
-        # 这是llama3的特点，第三行才是中文名
-        en_name = re.sub(r'[^a-zA-Z]', '', lines[0].replace(" ","")) if len(lines) > 0 else ""
-        ch_name = lines[2] if len(lines) > 1 else ""
-        detailed_description = "\n".join(lines[4:]) if len(lines) > 2 else ""
+        for i in range(len(lines)):
+            if "en_name" in lines[i]:
+                en_name = re.sub(r'[^a-zA-Z]', '', lines[i].split(":")[1].strip().replace(" ",""))
+            elif "ch_name" in lines[i]:
+                ch_name = lines[i].split(":")[1].strip()
+            elif "description" in lines[i]:
+                detailed_description = "\n".join(lines[i+1:]).strip()
+                break
 
-        # print("en_name: {}\nch_name: {}\ndescription: {}".format(en_name, ch_name, detailed_description))
+        # print("en_name: {}\nch_name: {}\ndetailed_description: {}\ndescription: {}".format(en_name, ch_name, detailed_description, description))
 
         # 初始化 RequirementTree
         self.tree = RequirementTree(en_name, ch_name, detailed_description, '')
@@ -133,8 +137,8 @@ class RequirementManager:
         @param s: 显示的标题信息
         @param node: 要显示的节点
         """
-        print("=====================\n{}\n=====================\nen_name: {}\nch_name: {}\ndescription: {}\ncode: {}\nfile_path: {}\n=====================".format(
-            s, node.en_name, node.ch_name, node.description, node.code, node.file_path))
+        print("=====================\n{}\n=====================\nen_name: {}\nch_name: {}\ndescription: {}\nfile_path: {}\ncode: {}\n=====================".format(
+            s, node.en_name, node.ch_name, node.description, node.file_path, node.code))
 
     def dfs_search_node_name(self, node, selected_node_name):
         """
@@ -158,36 +162,42 @@ class RequirementManager:
         """
 
         prompt = """
-        You are a top-notch language expert. 
-        For the following requirement: {requirement}. 
-        Return only the full name of the selected name in Simple Chinese without Spaces.
-        From the list of names below, select the one that best meets your needs. If None is found, return None. You cannot return a name that is not in the list:
-        [{node_names}]
-        """.format(requirement=s, node_names=self.node_names)
-        
+        Requirement: {requirement}.
+        From the list of names below, choose the one that display in the requirement. 
+        If none of the names display in the requirement, return None:
+        Node_names: [{node_names}]
+        Only return one word. 
+        {location_node_example}
+        """.format(requirement=s, node_names=self.node_names, location_node_example=location_node_example)
+
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         selected_node_name = res['message']['content'].strip()
+
+        # 定位字符串中return的位置，只要return后面的内容
+        if "return" in selected_node_name:
+            selected_node_name = selected_node_name[selected_node_name.index("return")+6:].strip()
+        elif "is:" in selected_node_name:
+            selected_node_name = selected_node_name[selected_node_name.index("is:")+3:].strip()
 
         # print(f"=====================\n您选择的节点是：{selected_node_name}\n=====================")
 
         if self.tree.current_node==None:
-            return None
-
+            return self.dfs_search_node_name(self.tree.root, selected_node_name)
         # 先看当前节点是不是
         if self.tree.current_node.ch_name in selected_node_name or selected_node_name in self.tree.current_node.ch_name:
             if self.tree.current_node.ch_name not in self.node_names:
-                return None
+                return self.dfs_search_node_name(self.tree.root, selected_node_name)
             return self.tree.current_node
         # 再看当前节点的父节点是不是
         if self.tree.current_node.parent and (self.tree.current_node.parent.ch_name in selected_node_name or selected_node_name in self.tree.current_node.parent.ch_name) :
             if self.tree.current_node.ch_name not in self.node_names:
-                return None
+                return self.dfs_search_node_name(self.tree.root, selected_node_name)
             return self.tree.current_node.parent
         # 再看当前节点的子节点是不是
         for child in self.tree.current_node.children:
             if child.ch_name in selected_node_name or selected_node_name in child.ch_name:
                 if self.tree.current_node.ch_name not in self.node_names:
-                    return None
+                    return self.dfs_search_node_name(self.tree.root, selected_node_name)
                 return child
         # 最后dfs搜索整个树
         return self.dfs_search_node_name(self.tree.root, selected_node_name)        
@@ -229,7 +239,7 @@ class RequirementManager:
                 # 循环删除节点，直到用户确认删除
                 while self.tree.current_node is not None:
                     self.display_node("您想要删除的节点信息如下所示", self.tree.current_node)
-                    response = input("你确认删除{}吗[y]/n: ".format(self.tree.current_node.ch_name)).strip().lower()
+                    response = input("你确认永久删除{}吗[y]/n: ".format(self.tree.current_node.ch_name)).strip().lower()
                     if response == 'y' or response == '':
                         name = self.tree.current_node.ch_name
                         self.tree.current_node = self.tree.current_node.parent
@@ -241,7 +251,8 @@ class RequirementManager:
                     self.node_names = self.display_tree(self.tree.root, 0, False)
                     # 从self.node_names中删除not_delete
                     for node_name in not_delete:
-                        self.node_names = self.node_names.replace(node_name, "")
+                        if node_name+", " in self.node_names:
+                            self.node_names = self.node_names.replace(node_name+", ", "")
                     # print(self.node_names)
                     self.tree.current_node = self.location_node(s)
                 
@@ -254,11 +265,11 @@ class RequirementManager:
             elif classify.startswith("modify"):
                 # 显示当前节点信息并询问用户需要修改成什么
                 self.display_node("您想要修改的节点信息如下所示", self.tree.current_node)
-                new_en_name = input(f"请输入新的英文名称，或者回车跳过，当前是: {self.tree.current_node.en_name} ").strip() or self.tree.current_node.en_name
-                new_ch_name = input(f"请输入新的中文名称，或者回车跳过，当前是: {self.tree.current_node.ch_name} ").strip() or self.tree.current_node.ch_name
-                new_description = input(f"请输入新的描述，或者回车跳过，当前是: {self.tree.current_node.description} ").strip() or self.tree.current_node.description
-                new_code = input(f"请输入新的代码，或者回车跳过，当前是: {self.tree.current_node.code}) ").strip() or self.tree.current_node.code
-                new_file_path = input(f"请输入新的文件路径，或者回车跳过，当前是: {self.tree.current_node.file_path} ").strip() or self.tree.current_node.file_path
+                new_en_name = input(f"请输入新的英文名称，回车保留当前数据： {self.tree.current_node.en_name} ").strip() or self.tree.current_node.en_name
+                new_ch_name = input(f"请输入新的中文名称，回车保留当前数据: {self.tree.current_node.ch_name} ").strip() or self.tree.current_node.ch_name
+                new_description = input(f"请输入新的描述，回车保留当前数据: {self.tree.current_node.description} ").strip() or self.tree.current_node.description
+                new_code = input(f"请输入新的代码，回车保留当前数据: {self.tree.current_node.code}) ").strip() or self.tree.current_node.code
+                new_file_path = input(f"请输入新的文件路径，回车保留当前数据: {self.tree.current_node.file_path} ").strip() or self.tree.current_node.file_path
                 self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
                 
                 # 显示当前树结构
@@ -269,10 +280,10 @@ class RequirementManager:
             elif classify.startswith("code"):
                 # 生成当前节点的代码
                 self.tree.current_node = self.tree.root
-                print("开始生成代码...")
+                print("开始在目录{}生成代码...".format(self.filepath))
                 code = self.tree.construct_current_code(self.filepath)
-                start_watching(s, self.tree.file_node_map)
-                print(f"=====================\n所有代码生成完毕，根节点的代码如下所示：\n=====================\n{code}\n=====================")
+                start_watching(self.filepath, self.tree.file_node_map)
+                print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
             
             elif classify.startswith("show"):
                 self.display_node("您想要的节点信息如下所示", self.tree.current_node)
