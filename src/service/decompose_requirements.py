@@ -2,10 +2,12 @@ import json
 import ollama
 import re
 from prompt import role, task, one_shot, location_node_example, init_tree_example, classify_example
-from requirement_tree.requirement_tree import RequirementTree, FileChangeHandler
+from requirement_tree.requirement_tree import RequirementTree
+from file_system.fileChange import FileChangeHandler
 from watchdog.observers import Observer
 import threading
 import time
+from file_system.fileChange import create_directory_and_files
 
 class RequirementManager:
     def __init__(self, filepath):
@@ -315,6 +317,8 @@ class RequirementManager:
                 self.tree.current_node = self.tree.root
                 print("开始在目录{}生成代码...".format(self.filepath))
                 self.tree.construct_current_code(self.filepath)
+                # 创建文件夹和文件
+                create_directory_and_files(self.current_node, self.filepath, [])
                 self.start_watching()
                 print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
             
