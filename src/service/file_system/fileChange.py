@@ -1,5 +1,7 @@
 import time, os
 from watchdog.events import FileSystemEventHandler
+import json
+from requirement_tree.requirement_tree_node import RequirementTreeNode
 
 class FileChangeHandler(FileSystemEventHandler):
     """
@@ -85,7 +87,7 @@ def create_directory_and_files(file_node_map, node, path, imports):
 
     # 递归处理子节点
     for child in node.children:
-        create_directory_and_files(child, current_path, imports)
+        create_directory_and_files(file_node_map, child, current_path, imports)
         # 添加导入语句
         imports.append(f"from {child.en_name.replace(' ', '_')}.{child.en_name.replace(' ', '_')} import *")
 
@@ -97,3 +99,43 @@ def create_directory_and_files(file_node_map, node, path, imports):
         file.write(node.code)
     node.file_path = file_path
     file_node_map[file_path] = node
+
+# 将树结构存入根目录的.json文件中
+def save_tree_to_json(tree, path):
+    """
+    将树结构存入.json文件中
+    @param tree: 树结构
+    @param path: 存储路径
+    """
+    def node_to_dict(node):
+        return {
+            "en_name": node.en_name,
+            "ch_name": node.ch_name,
+            "description": node.description,
+            "file_path": node.file_path,
+            "parent": str(node.parent.id) if node.parent else "",
+            "code": node.code,
+            "id": str(node.id),
+            "children": [node_to_dict(child) for child in node.children]
+        }
+
+    with open(path, 'w', encoding="utf-8") as file:
+        json.dump(node_to_dict(tree.root), file, ensure_ascii=False, indent=4)
+
+# 从.json文件中加载树结构
+def load_tree_from_json(path, parent=None):
+    """
+    从.json文件中加载树结构
+    @param path: .json文件路径
+    @param parent: 父节点
+    @return: 加载的树结构
+    """
+    def dict_to_node(node_dict, parent):
+        node = RequirementTreeNode(node_dict["en_name"], node_dict["ch_name"], node_dict["description"], node_dict["code"], node_dict["file_path"], parent)
+        for child_dict in node_dict["children"]:
+            dict_to_node(child_dict, node)
+        return node
+
+    with open(path, 'r') as file:
+        tree_dict = json.load(file)
+        return dict_to_node(tree_dict, parent)

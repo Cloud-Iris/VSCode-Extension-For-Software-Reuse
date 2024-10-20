@@ -3,11 +3,10 @@ import ollama
 import re
 from prompt import role, task, one_shot, location_node_example, init_tree_example, classify_example
 from requirement_tree.requirement_tree import RequirementTree
-from file_system.fileChange import FileChangeHandler
+from file_system.fileChange import *
 from watchdog.observers import Observer
 import threading
 import time
-from file_system.fileChange import create_directory_and_files
 
 class RequirementManager:
     def __init__(self, filepath):
@@ -21,7 +20,7 @@ class RequirementManager:
         """
 
         prompt = """Classify the following requirement into one of the categories: modify, add, delete, code, show_information. Only one word is returned.
-        Requirement: {s}
+        Requirement: {requirement}
         {classify_example}
         """.format(requirement=s, classify_example=classify_example)
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
@@ -110,6 +109,17 @@ class RequirementManager:
         @param s: 用户输入的需求描述
         @return: 初始化后的RequirementTree
         """
+
+        # 如果根目录有restore.json文件，加载树结构
+        # if os.path.exists(self.filepath+"/restore.json"):
+        #     self.flag=False
+        #     self.tree = load_tree_from_json(self.filepath+"/restore.json")
+        #     print("\n根目录系统加载完毕！")
+        #     self.node_names = self.display_tree(self.tree.root)
+        # else:
+        print("\n目前根目录没有系统，请问您需要实现什么系统：")
+        s = input()
+
         prompt = """
         You are a top-notch description expert. 
         Requirement: {requirement}. 
@@ -244,8 +254,7 @@ class RequirementManager:
         用户交互函数，用于处理用户输入的需求并对需求树进行相应的操作。
         """
         # 初始化根节点
-        print("请问您需要实现什么系统：")
-        s = input()
+        s = ""
         classify = "add"
         self.init_tree(s)
         
@@ -318,7 +327,8 @@ class RequirementManager:
                 print("开始在目录{}生成代码...".format(self.filepath))
                 self.tree.construct_current_code(self.filepath)
                 # 创建文件夹和文件
-                create_directory_and_files(self.tree.file_node_map,self.current_node, self.filepath, [])
+                create_directory_and_files(self.tree.file_node_map,self.tree.current_node, self.filepath, [])
+                save_tree_to_json(self.tree, self.filepath+"/restore.json")
                 self.start_watching()
                 print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
             

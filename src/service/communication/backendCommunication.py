@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from decompose_requirements import RequirementManager
 import os
+from file_system.fileChange import load_tree_from_json
 
 class BackendService:
     def __init__(self):
