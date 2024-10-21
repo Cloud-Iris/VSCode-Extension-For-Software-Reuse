@@ -4,7 +4,8 @@ import axios from 'axios';
 
 const axiosInstance = axios.create({
     baseURL: 'http://localhost:5000',
-    timeout: 1000,
+    // 这里后面最好加回来，因为后端需要控制台交互，所以暂时注释掉
+    // timeout: 2000,
 });
 
 // 服务器是否正在运行
