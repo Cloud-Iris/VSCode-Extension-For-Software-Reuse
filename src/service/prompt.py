@@ -16,14 +16,26 @@ The output should be formatted as a JSON array containing objects for each opera
 """
 
 location_node_example="""
-The folling is an example of the input and output:
+The folling is examples of the input and output:
 
 ####################################
-Requirement: 我想要删除绝对值运算
-Node_names: [计算器, 增加操作, 减法操作, 乘法操作, 除法操作, 取模操作, 指数运算, 开方运算, 绝对值运算, 科学计数法显示]
+Requirement: 我想要删除A和B from [B, C]
+Node_names: [B, C]
 #####################################
+Inference:
+用户的操作涉及到了A和B两个节点名称，但是给出的Node_names里面没有A，只有B，所以我要返回的是B
 Output:
-绝对值运算
+B
+#####################################
+
+####################################
+Requirement: 我想要删除A和B from [C]
+Node_names: [C]
+#####################################
+Inference:
+用户的操作涉及到了A和B两个节点名称，但是给出的Node_names里面没有A和B，所以我要返回的是None
+Output:
+None
 #####################################
 """
 
@@ -84,7 +96,7 @@ input:
 Output:
 [
     {
-        "name": "增加操作",
+        "name": "加法操作",
         "enName": "Add Operation",
         "description": "实现两个数相加的功能"
     },

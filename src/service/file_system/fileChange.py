@@ -1,7 +1,8 @@
 import time, os
 from watchdog.events import FileSystemEventHandler
 import json
-from requirement_tree.requirement_tree_node import RequirementTreeNode
+from requirement_tree.requirement_tree import RequirementTree
+from requirement_tree.requirement_tree_node import RequirementInternalNode
 
 class FileChangeHandler(FileSystemEventHandler):
     """
@@ -123,19 +124,24 @@ def save_tree_to_json(tree, path):
         json.dump(node_to_dict(tree.root), file, ensure_ascii=False, indent=4)
 
 # 从.json文件中加载树结构
-def load_tree_from_json(path, parent=None):
+def load_tree_from_json(path):
     """
     从.json文件中加载树结构
     @param path: .json文件路径
-    @param parent: 父节点
     @return: 加载的树结构
     """
-    def dict_to_node(node_dict, parent):
-        node = RequirementTreeNode(node_dict["en_name"], node_dict["ch_name"], node_dict["description"], node_dict["code"], node_dict["file_path"], parent)
+    def dict_to_node(node_dict):
+        node = RequirementInternalNode(node_dict["en_name"], node_dict["ch_name"], node_dict["description"], node_dict["file_path"])
+        # node.id = uuid.UUID(node_dict["id"])
+        node.code = node_dict["code"]
         for child_dict in node_dict["children"]:
-            dict_to_node(child_dict, node)
+            child_node = dict_to_node(child_dict)
+            node.children.append(child_node)
+            child_node.parent = node
         return node
 
-    with open(path, 'r') as file:
+    with open(path, 'r', encoding="utf-8") as file:
         tree_dict = json.load(file)
-        return dict_to_node(tree_dict, parent)
+        tree = RequirementTree(tree_dict["en_name"], tree_dict["ch_name"], tree_dict["description"], tree_dict["file_path"])
+        tree.root = dict_to_node(tree_dict)
+        return tree

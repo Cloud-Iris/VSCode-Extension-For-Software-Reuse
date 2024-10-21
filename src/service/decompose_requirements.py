@@ -6,12 +6,14 @@ from requirement_tree.requirement_tree import RequirementTree
 from file_system.fileChange import *
 from watchdog.observers import Observer
 import threading
+from difflib import SequenceMatcher
 import time
+import jieba.posseg as pseg
 
 class RequirementManager:
     def __init__(self, filepath):
         self.tree = None
-        self.node_names = ""
+        self.node_names = []
         self.filepath = filepath
 
     def requirements_classification(self, s: str) -> str:
@@ -53,13 +55,6 @@ class RequirementManager:
         s += "]"
         return s
 
-    def user_confirm(self):
-        """
-        Confirm the requirements.
-        """
-        response = input("你确认执行吗[y]/n: ").strip().lower()
-        return response == 'y' or response == ''
-
     def get_path_to_current_node(self):
         """
         获取从根节点到当前节点的所有ch_name
@@ -95,31 +90,63 @@ class RequirementManager:
         @param node: 当前节点
         @param depth: 当前节点的深度
         """
-        s= node.ch_name+", "
+        node_name = []
+        node_name.append(node.ch_name)
         if display:
             print("\t" * depth + node.ch_name)
         if hasattr(node, 'children') and node.children:
             for child in node.children:
-                s+=(self.display_tree(child, depth + 1, display))
-        return s
+                node_name.extend(self.display_tree(child, depth + 1, display))
+        return node_name
 
-    def init_tree(self, s):
+    def init_tree(self) -> str:
         """
         初始化一个RequirementTree
         @param s: 用户输入的需求描述
         @return: 初始化后的RequirementTree
         """
 
-        # 如果根目录有restore.json文件，加载树结构
-        # if os.path.exists(self.filepath+"/restore.json"):
-        #     self.flag=False
-        #     self.tree = load_tree_from_json(self.filepath+"/restore.json")
-        #     print("\n根目录系统加载完毕！")
-        #     self.node_names = self.display_tree(self.tree.root)
+        # 如果根目录的第一层文件夹中有restore.json文件，加载树结构
+        try:
+            root_dir = self.filepath
+            for item in os.listdir(root_dir):
+                item_path = os.path.join(root_dir, item)
+                if os.path.isdir(item_path):
+                    restore_path = os.path.join(item_path, "restore.json")
+                    if os.path.exists(restore_path):
+                        self.flag = False
+                        self.tree = load_tree_from_json(restore_path)
+                        print("\n根目录系统加载完毕！")
+                        self.node_names = self.display_tree(self.tree.root)
+
+                        # 询问用户是否有进一步的需求
+                        print("\n请问您有什么进一步的需求？输入q/quit/exit/no退出系统。")
+                        s = input().strip()
+                        while True:
+                            if s.lower() in ["no", "q", "quit", "exit"]:
+                                os._exit(0)
+                            self.tree.current_node = self.location_node(s)
+                            if self.tree.current_node is None:
+                                # 显示当前树结构
+                                print("\n=====================\n当前树结构如下：\n=====================")
+                                self.node_names = self.display_tree(self.tree.root)
+                                print("=====================")
+                                print("\n对不起，我无法理解您的需求，请详细描述您的需求，或者输入q/quit/exit/no退出系统。")
+                                s = input().strip()
+                            else:
+                                break
+                        # 分类用户输入的需求
+                        classify = self.requirements_classification(s)
+
+                        return s, classify
+        except Exception as e:
+            print(f"加载树结构时发生错误: {e}")
+
         # else:
         print("\n目前根目录没有系统，请问您需要实现什么系统：")
         s = input()
 
+        print("\n=====================\n正在进行拆解{}\n=====================".format(s))
         prompt = """
         You are a top-notch description expert. 
         Requirement: {requirement}. 
@@ -137,7 +164,7 @@ class RequirementManager:
 
         for i in range(len(lines)):
             if "en_name" in lines[i]:
-                en_name = re.sub(r'[^a-zA-Z]', '', lines[i].split(":")[1].strip().replace(" ",""))
+                en_name = re.sub(r'[^a-zA-Z]', '', lines[i].split(":")[1].strip().replace(" ","_"))
             elif "ch_name" in lines[i]:
                 ch_name = lines[i].split(":")[1].strip()
             elif "description" in lines[i]:
@@ -150,12 +177,18 @@ class RequirementManager:
         self.tree = RequirementTree(en_name, ch_name, detailed_description, '')
         self.node_names = self.display_tree(self.tree.root, 0, False)
 
+        return s, "add"
+
     def display_node(self, s, node):
         """
         显示节点的信息
         @param s: 显示的标题信息
         @param node: 要显示的节点
         """
+        # 打印 node.code 以进行调试
+        print("Debug: node.code 内容如下：")
+        print(node.code)
+
         print("=====================\n{}\n=====================\nen_name: {}\nch_name: {}\ndescription: {}\nfile_path: {}\ncode: {}\n=====================".format(
             s, node.en_name, node.ch_name, node.description, node.file_path, node.code))
 
@@ -208,14 +241,19 @@ class RequirementManager:
         根据用户输入的需求描述，定位到树中的一个节点
         """
 
+        for node_name in self.node_names:
+            if node_name in s:
+                return self.dfs_search_node_name(self.tree.root, node_name)
+
         prompt = """
-        Requirement: {requirement}.
-        From the list of names below, choose the one that display in the requirement. 
-        If none of the names display in the requirement, return None:
-        Node_names: [{node_names}]
-        Only return one word. 
+        You are a top-notch language expert. 
+        For the following requirement: {requirement}. 
+        Return only the full name of the selected name in Simple Chinese without Spaces.
+        From the list of names below, select the one that best meets your needs. If None is found, return None. You cannot return a name that is not in the list:
+        [{node_names}]
+        
         {location_node_example}
-        """.format(requirement=s, node_names=self.node_names, location_node_example=location_node_example)
+        """.format(requirement=s, node_names=", ".join(self.node_names), location_node_example=location_node_example)
 
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         selected_node_name = res['message']['content'].strip()
@@ -223,10 +261,15 @@ class RequirementManager:
         # 定位字符串中return的位置，只要return后面的内容
         if "return" in selected_node_name:
             selected_node_name = selected_node_name[selected_node_name.index("return")+6:].strip()
-        elif "is:" in selected_node_name:
-            selected_node_name = selected_node_name[selected_node_name.index("is:")+3:].strip()
+        if ":" in selected_node_name:
+            selected_node_name = selected_node_name[selected_node_name.index(":")+1:].strip()
+        if "output" in selected_node_name:
+            selected_node_name = selected_node_name[selected_node_name.index("output")+6:].strip()
+        if "Output" in selected_node_name:
+            selected_node_name = selected_node_name[selected_node_name.index("Output")+6:].strip()
 
-        # print(f"=====================\n您选择的节点是：{selected_node_name}\n=====================")
+        print("node_names: ", self.node_names)
+        print(f"=====================\n您选择的节点是：{selected_node_name}\n=====================")
 
         if self.tree.current_node==None:
             return self.dfs_search_node_name(self.tree.root, selected_node_name)
@@ -254,9 +297,7 @@ class RequirementManager:
         用户交互函数，用于处理用户输入的需求并对需求树进行相应的操作。
         """
         # 初始化根节点
-        s = ""
-        classify = "add"
-        self.init_tree(s)
+        s, classify = self.init_tree()
         
         while s.lower() not in ["no", "q", "quit", "exit"]:
             
@@ -287,7 +328,7 @@ class RequirementManager:
                     self.display_node("您想要删除的节点信息如下所示", self.tree.current_node)
                     response = input("你确认永久删除{}吗[y]/n: ".format(self.tree.current_node.ch_name)).strip().lower()
                     if response == 'y' or response == '':
-                        self.tree.current_node.remove_node()
+                        self.tree.remove_node()
                     else:
                         not_delete.append(self.tree.current_node.ch_name)
                     # print(not_delete)
@@ -312,7 +353,7 @@ class RequirementManager:
                 new_en_name = input(f"请输入新的英文名称，回车保留当前数据： {self.tree.current_node.en_name} ").strip() or self.tree.current_node.en_name
                 new_ch_name = input(f"请输入新的中文名称，回车保留当前数据: {self.tree.current_node.ch_name} ").strip() or self.tree.current_node.ch_name
                 new_description = input(f"请输入新的描述，回车保留当前数据: {self.tree.current_node.description} ").strip() or self.tree.current_node.description
-                new_code = input(f"请输入新的代码，回车保留当前数据: {self.tree.current_node.code}) ").strip() or self.tree.current_node.code
+                new_code = input(f"请输入新的代码，回车保留当前数据: {self.tree.current_node.code} ").strip() or self.tree.current_node.code
                 new_file_path = input(f"请输入新的文件路径，回车保留当前数据: {self.tree.current_node.file_path} ").strip() or self.tree.current_node.file_path
                 self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
                 
@@ -328,7 +369,7 @@ class RequirementManager:
                 self.tree.construct_current_code(self.filepath)
                 # 创建文件夹和文件
                 create_directory_and_files(self.tree.file_node_map,self.tree.current_node, self.filepath, [])
-                save_tree_to_json(self.tree, self.filepath+"/restore.json")
+                save_tree_to_json(self.tree, self.filepath+"/"+self.tree.root.en_name+"/restore.json")
                 self.start_watching()
                 print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
             
