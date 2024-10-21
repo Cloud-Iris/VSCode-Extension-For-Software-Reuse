@@ -5,24 +5,23 @@ In your role as a facilitator, you gather the team to discuss the project's goal
 task="""
 Given the following input data representing a software application and its module:
 
-Please provide a list of operations that are available within the "基本运算模块" (Basic Arithmetic Module) of the "计算器" (Calculator) application. Each operation should include the following details:
+Please provide a list of operations.
 
 - The name of the operation in Chinese.
 - The name of the operation in English.
 - A brief description of what the operation does in Chinese.
 
 The output should be formatted as a JSON array containing objects for each operation.
+
 """
 
 one_shot="""
 
+The folling is an example of the input and output:
+
 ####################################
 input: 
-{
-  "a": 1,
-  "softwareName": "计算器",
-  "moduleName": "基本运算模块"
-}
+从从根节点到当前节点的名字依次是 计算器，我想要实现一个计算器
 #####################################
 Output:
 [
@@ -65,11 +64,6 @@ Output:
         "name": "绝对值运算",
         "enName": "Absolute Value Operation",
         "description": "实现求一个数的绝对值"
-    },
-    {
-        "name": "符号判断",
-        "enName": "Sign Determination Operation",
-        "description": "判断输入数值的正负"
     },
     {
         "name": "科学计数法显示",
