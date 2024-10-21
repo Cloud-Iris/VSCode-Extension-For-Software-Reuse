@@ -18,10 +18,12 @@ class RequirementManager:
 
     def requirements_classification(self, s: str) -> str:
         """
-        将用户输入的需求分类为create, modify, add, delete, code, show
+        将用户输入的需求分类
         """
 
-        prompt = """Classify the following requirement into one of the categories: modify, add, delete, code, show_information. Only one word is returned.
+        prompt = """
+        You are language expert.
+        Classify the following requirement into one of the categories: add, delete, disassemble, modify, code, show_information. Only one word is returned.
         Requirement: {requirement}
         {classify_example}
         """.format(requirement=s, classify_example=classify_example)
@@ -37,6 +39,8 @@ class RequirementManager:
             return "code"
         elif "show_information" in classification:
             return "show"
+        elif "disassemble" in classification:
+            return "disassemble"
         else:
             return None
 
@@ -91,7 +95,8 @@ class RequirementManager:
         @param depth: 当前节点的深度
         """
         node_name = []
-        node_name.append(node.ch_name)
+        if depth != 0:
+            node_name.append(node.ch_name)
         if display:
             print("\t" * depth + node.ch_name)
         if hasattr(node, 'children') and node.children:
@@ -146,7 +151,17 @@ class RequirementManager:
         print("\n目前根目录没有系统，请问您需要实现什么系统：")
         s = input()
 
-        print("\n=====================\n正在进行拆解{}\n=====================".format(s))
+        en_name, ch_name, detailed_description= self.generate_node(s)
+
+        # print("en_name: {}\nch_name: {}\ndetailed_description: {}\ndescription: {}".format(en_name, ch_name, detailed_description, description))
+
+        # 生成根节点
+        self.tree = RequirementTree(en_name, ch_name, detailed_description, '')
+        self.node_names = self.display_tree(self.tree.root, 0, False)
+
+        return s, "disassemble"
+
+    def generate_node(self, requirement):
         prompt = """
         You are a top-notch description expert. 
         Requirement: {requirement}. 
@@ -157,7 +172,7 @@ class RequirementManager:
         Other lines: A detailed description to satisfy the requirement.
 
         {init_tree_example}
-        """.format(requirement=s, init_tree_example=init_tree_example)
+        """.format(requirement=requirement, init_tree_example=init_tree_example)
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         description = res['message']['content'].strip()
         lines = description.split('\n')
@@ -170,14 +185,7 @@ class RequirementManager:
             elif "description" in lines[i]:
                 detailed_description = "\n".join(lines[i+1:]).strip()
                 break
-
-        # print("en_name: {}\nch_name: {}\ndetailed_description: {}\ndescription: {}".format(en_name, ch_name, detailed_description, description))
-
-        # 初始化 RequirementTree
-        self.tree = RequirementTree(en_name, ch_name, detailed_description, '')
-        self.node_names = self.display_tree(self.tree.root, 0, False)
-
-        return s, "add"
+        return en_name, ch_name, detailed_description
 
     def display_node(self, s, node):
         """
@@ -185,9 +193,6 @@ class RequirementManager:
         @param s: 显示的标题信息
         @param node: 要显示的节点
         """
-        # 打印 node.code 以进行调试
-        print("Debug: node.code 内容如下：")
-        print(node.code)
 
         print("=====================\n{}\n=====================\nen_name: {}\nch_name: {}\ndescription: {}\nfile_path: {}\ncode: {}\n=====================".format(
             s, node.en_name, node.ch_name, node.description, node.file_path, node.code))
@@ -248,28 +253,29 @@ class RequirementManager:
         prompt = """
         You are a top-notch language expert. 
         For the following requirement: {requirement}. 
-        Return only the full name of the selected name in Simple Chinese without Spaces.
-        From the list of names below, select the one that best meets your needs. If None is found, return None. You cannot return a name that is not in the list:
+        From the list of names below, select the one that best meets your needs or return None if they don't meet your need. You cannot return a name that is not in the list:
         [{node_names}]
-        
+        Return only the full name of the selected name without Spaces.
         {location_node_example}
         """.format(requirement=s, node_names=", ".join(self.node_names), location_node_example=location_node_example)
 
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         selected_node_name = res['message']['content'].strip()
 
+        # print(f"=====================\n筛选前：{selected_node_name}\n=====================")
+
         # 定位字符串中return的位置，只要return后面的内容
         if "return" in selected_node_name:
             selected_node_name = selected_node_name[selected_node_name.index("return")+6:].strip()
         if ":" in selected_node_name:
-            selected_node_name = selected_node_name[selected_node_name.index(":")+1:].strip()
+            selected_node_name = selected_node_name[selected_node_name.rindex(":")+1:].strip()
         if "output" in selected_node_name:
             selected_node_name = selected_node_name[selected_node_name.index("output")+6:].strip()
         if "Output" in selected_node_name:
             selected_node_name = selected_node_name[selected_node_name.index("Output")+6:].strip()
 
-        print("node_names: ", self.node_names)
-        print(f"=====================\n您选择的节点是：{selected_node_name}\n=====================")
+        # print("node_names: ", self.node_names)
+        print(f"=====================\n大模型选择的节点是：{selected_node_name}\n=====================")
 
         if self.tree.current_node==None:
             return self.dfs_search_node_name(self.tree.root, selected_node_name)
@@ -302,11 +308,8 @@ class RequirementManager:
         while s.lower() not in ["no", "q", "quit", "exit"]:
             
             if classify.startswith("add"):
-                # 获取从根节点到当前节点的所有ch_name
-                path = self.get_path_to_current_node()
-                # 将路径信息添加到s中
-                s = "从根节点到当前节点的名字依次是 " + " -> ".join(path) + " 在当前节点我想要实现： " + s
-                
+                print("\n=====================\n正在执行\n=====================")
+               
                 # 将当前节点转换为内部节点
                 self.tree.convert_leaf_to_internal(self.tree.current_node)
                 # 分解需求
@@ -315,7 +318,7 @@ class RequirementManager:
                 # 添加子节点
                 for child in children:
                     self.tree.add_child(child['enName'].replace(" ",""), child['name'].replace("增加","").replace("添加",""), child['description'], '')
-                
+
                 # 显示当前树结构
                 print("\n=====================\n当前树结构如下：\n=====================")
                 self.node_names = self.display_tree(self.tree.root)
@@ -336,8 +339,8 @@ class RequirementManager:
                     self.node_names = self.display_tree(self.tree.root, 0, False)
                     # 从self.node_names中删除not_delete
                     for node_name in not_delete:
-                        if node_name+", " in self.node_names:
-                            self.node_names = self.node_names.replace(node_name+", ", "")
+                        if node_name in self.node_names:
+                            self.node_names.remove(node_name)
                     # print(self.node_names)
                     self.tree.current_node = self.location_node(s)
                 
@@ -376,6 +379,28 @@ class RequirementManager:
             elif classify.startswith("show"):
                 self.display_node("您想要的节点信息如下所示", self.tree.current_node)
 
+            elif classify.startswith("disassemble"):
+                print("\n=====================\n正在执行\n=====================")
+
+                # 获取从根节点到当前节点的所有ch_name
+                path = self.get_path_to_current_node()
+                # 将路径信息添加到s中
+                s = "从根节点到当前节点的名字依次是 " + " -> ".join(path) + " 请对 " + self.tree.current_node.ch_name +" 进行功能拆解"
+                
+                # 将当前节点转换为内部节点
+                self.tree.convert_leaf_to_internal(self.tree.current_node)
+                # 分解需求
+                children = self.decompose_requirements(s)
+                children = json.loads(children)
+                # 添加子节点
+                for child in children:
+                    self.tree.add_child(child['enName'].replace(" ",""), child['name'].replace("增加","").replace("添加",""), child['description'], '')
+
+                # 显示当前树结构
+                print("\n=====================\n当前树结构如下：\n=====================")
+                self.node_names = self.display_tree(self.tree.root)
+                print("=====================")
+
             else:
                 # 显示当前树结构
                 print("\n=====================\n当前树结构如下：\n=====================")
@@ -389,6 +414,10 @@ class RequirementManager:
             while True:
                 if s.lower() in ["no", "q", "quit", "exit"]:
                     return
+                # 分类用户输入的需求
+                classify = self.requirements_classification(s)
+                if classify.startswith("code"):
+                    break
                 self.tree.current_node = self.location_node(s)
                 if self.tree.current_node is None:
                     # 显示当前树结构
@@ -399,5 +428,3 @@ class RequirementManager:
                     s = input().strip()
                 else:
                     break
-            # 分类用户输入的需求
-            classify = self.requirements_classification(s)

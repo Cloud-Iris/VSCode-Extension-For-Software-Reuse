@@ -90,7 +90,7 @@ def create_directory_and_files(file_node_map, node, path, imports):
     for child in node.children:
         create_directory_and_files(file_node_map, child, current_path, imports)
         # 添加导入语句
-        imports.append(f"from {child.en_name.replace(' ', '_')}.{child.en_name.replace(' ', '_')} import *")
+        imports.append(f"from {child.file_path[0:child.file_path.rindex("/").replace("/",".")]} import *")
 
     # 回溯时创建当前节点的文件
     file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")
