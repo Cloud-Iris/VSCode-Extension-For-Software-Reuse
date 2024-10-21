@@ -7,6 +7,8 @@
     <title>需求分解</title>
     <link rel="stylesheet" href="###CSS">
     <!-- <link rel="stylesheet" href="./css/style-requirement.css"> -->
+     <!-- 使用 jsDelivr CDN 直接导入 axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
     <div class="input-container" id="input-container">
@@ -20,6 +22,11 @@
     <div class="sub-requirements" id="sub-requirements"></div>
 
     <script>
+        const axiosInstance = axios.create({
+            baseURL: 'http://localhost:5000',
+            timeout: 1000,
+        });
+
         async function submitRequirement() {
             const input = document.getElementById('requirement-input').value;
             const errorMessage = document.getElementById('error-message');
@@ -153,16 +160,22 @@
 
         // #region 模拟后端请求
         async function fetchSubRequirements(requirement) {
-            // 模拟后端返回的数据
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve([
-                        `默认 2 级需求 111 for ${requirement}`,
-                        `默认 2 级需求 222 for ${requirement}`,
-                        `默认 2 级需求 333 for ${requirement}`
-                    ]);
-                }, 500); // 模拟网络延迟
-            });
+            // console.log(axios);
+            const { data } = await axiosInstance.post("/depose-req-for-level-2", {
+                req: requirement
+            })
+            return data._2LevelReqs;
+
+            // // 模拟后端返回的数据
+            // return new Promise((resolve) => {
+            //     setTimeout(() => {
+            //         resolve([
+            //             `默认 2 级需求 111 for ${requirement}`,
+            //             `默认 2 级需求 222 for ${requirement}`,
+            //             `默认 2 级需求 333 for ${requirement}`
+            //         ]);
+            //     }, 500); // 模拟网络延迟
+            // });
         }
 
         async function fetchLevelRequirements(module, requirement, level) {
