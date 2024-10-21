@@ -1,7 +1,7 @@
 import json
 import ollama
 import re
-from prompt import role, task, one_shot, location_node_example, init_tree_example, classify_example
+from prompt import role, task, one_shot, location_node_example, init_tree_example, classify_example, one_shot2
 from requirement_tree.requirement_tree import RequirementTree
 from file_system.fileChange import *
 from watchdog.observers import Observer
@@ -204,7 +204,7 @@ class RequirementManager:
         @param selected_node_name: 要搜索的节点的中文名称
         @return: 匹配的节点，如果未找到则返回None
         """
-        if node.ch_name in selected_node_name or selected_node_name in node.ch_name:
+        if node.ch_name in selected_node_name:
             return node
         if hasattr(node, 'children') and node.children:
             for child in node.children:
@@ -221,8 +221,7 @@ class RequirementManager:
         """
         event_handler = FileChangeHandler(self.tree.file_node_map, self.tree)
         observer = Observer()
-        print("file_path: ", self.filepath)
-        observer.schedule(event_handler, self.filepath, recursive=True)
+        observer.schedule(event_handler, self.filepath+"/"+self.tree.root.en_name, recursive=True)
         observer.start()
 
         def run_observer():
@@ -280,18 +279,18 @@ class RequirementManager:
         if self.tree.current_node==None:
             return self.dfs_search_node_name(self.tree.root, selected_node_name)
         # 先看当前节点是不是
-        if self.tree.current_node.ch_name in selected_node_name or selected_node_name in self.tree.current_node.ch_name:
+        if self.tree.current_node.ch_name in selected_node_name:
             if self.tree.current_node.ch_name not in self.node_names:
                 return self.dfs_search_node_name(self.tree.root, selected_node_name)
             return self.tree.current_node
         # 再看当前节点的父节点是不是
-        if self.tree.current_node.parent and (self.tree.current_node.parent.ch_name in selected_node_name or selected_node_name in self.tree.current_node.parent.ch_name) :
+        if self.tree.current_node.parent and self.tree.current_node.parent.ch_name in selected_node_name:
             if self.tree.current_node.ch_name not in self.node_names:
                 return self.dfs_search_node_name(self.tree.root, selected_node_name)
             return self.tree.current_node.parent
         # 再看当前节点的子节点是不是
         for child in self.tree.current_node.children:
-            if child.ch_name in selected_node_name or selected_node_name in child.ch_name:
+            if child.ch_name in selected_node_name:
                 if self.tree.current_node.ch_name not in self.node_names:
                     return self.dfs_search_node_name(self.tree.root, selected_node_name)
                 return child
@@ -312,6 +311,7 @@ class RequirementManager:
                
                 # 将当前节点转换为内部节点
                 self.tree.convert_leaf_to_internal(self.tree.current_node)
+                print("current_node: ", self.tree.current_node.ch_name)
                 # 分解需求
                 children = self.decompose_requirements(s)
                 children = json.loads(children)
@@ -371,7 +371,7 @@ class RequirementManager:
                 print("开始在目录{}生成代码...".format(self.filepath))
                 self.tree.construct_current_code(self.filepath)
                 # 创建文件夹和文件
-                create_directory_and_files(self.tree.file_node_map,self.tree.current_node, self.filepath, [])
+                create_directory_and_files(self.tree.root.en_name, self.tree.file_node_map,self.tree.current_node, self.filepath, [])
                 save_tree_to_json(self.tree, self.filepath+"/"+self.tree.root.en_name+"/restore.json")
                 self.start_watching()
                 print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
