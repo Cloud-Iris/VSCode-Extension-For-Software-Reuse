@@ -40,7 +40,11 @@ class MyWebviewViewProvider implements vscode.WebviewViewProvider {
         // 设置 Webview 的 HTML 内容
         const htmlFilePath = path.join(this._context.extensionPath, 'src/webviews/sidebar-requirement.html');
         const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
-        webviewView.webview.html = htmlContent;
+        // 设置 Webview 的 CSS 路径【将本地文件的相对路径转换为 Webview 可以访问的 VScode URI】
+        const cssFilePath = webviewView.webview.asWebviewUri(
+            vscode.Uri.joinPath(this._context.extensionUri, 'src', 'webviews', 'css', 'style-requirement.css')
+        );
+        webviewView.webview.html = htmlContent.replace('###CSS', cssFilePath.toString());
 
         // 记录当前打开的 code suggestion panel
         let activeInnerPanel: vscode.WebviewPanel | undefined;

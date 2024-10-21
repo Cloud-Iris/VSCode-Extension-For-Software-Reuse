@@ -1,0 +1,115 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+}
+.input-container {
+    margin-bottom: 20px;
+}
+.error-message {
+    color: red;
+    font-size: 12px;
+    margin-top: 5px;
+}
+input[type="text"] {
+    width: 300px;
+    padding: 10px;
+    border-radius: 15px;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 15px;
+    background-color: #007acc;
+    color: white;
+    cursor: pointer;
+    display: inline-block;
+}
+button:hover {
+    background-color: #005f99;
+}
+.pending-btn {
+    background-color: #FFA500;
+}
+.pending-btn:hover {
+    background-color: #FF8C00;
+}
+
+.requirement {
+    margin-top: 20px;
+}
+.sub-requirements {
+    margin-top: 20px;
+    padding: 10px;
+    /* border: 1px solid #0e0606; */
+    display: flex;
+    flex-direction: row;
+    justify-content:space-around;
+}
+.mid-level-req-column {
+    /* 每一列的宽度相同 */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    /* border: 1px solid #1c00f1; */
+}
+.add-mid-level-req-btn {
+    width: 80%;
+    margin: 5px auto 0;
+}
+.mid-level-requirements {
+    display: flex;
+    flex-direction: column;
+    /* border: 1px solid blue; */
+    /* 这里是调试的时候看间距用的，正式插件中水平距离很宝贵，不做 margin */
+    /* margin: auto 5px; */
+}
+
+/* 各级子需求的样式 */
+.sub-requirement {
+    margin: 10px auto;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 80%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.sub-requirement h2 {
+    margin-bottom: 10px;
+}
+.sub-requirement .content {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+.sub-requirement .description {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    margin-right: 10px;
+    text-align: left;
+}
+.sub-requirement .buttons {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.sub-requirement .buttons button {
+    margin-bottom: 5px;
+}
