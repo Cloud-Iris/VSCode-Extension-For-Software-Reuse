@@ -1,20 +1,23 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { sendFolderPathToBackend } from './service/communication/frontCommunication';
+import { startFlaskServer } from './server';
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "software-reuse-extension" is now active!');
 
     // 在显示 showSidebar Webview 前保存编辑器状态
     saveEditorState();
 
-    sendFolderPathToBackend();
+    // 开启 Flask 服务器，并获取其状态
+    const isServerRunning = await startFlaskServer(context);
 
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('myWebviewView', new MyWebviewViewProvider(context))
-    );
-
+    // IMPORTANT 在确保服务器开启之后再渲染侧边栏webview，允许前端访问
+    if (isServerRunning) {
+        context.subscriptions.push(
+            vscode.window.registerWebviewViewProvider('myWebviewView', new MyWebviewViewProvider(context))
+        );
+    }
     console.log('WebviewViewProvider 注册完毕');
 }
 
