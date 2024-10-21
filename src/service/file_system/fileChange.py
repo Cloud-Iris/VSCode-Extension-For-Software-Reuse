@@ -65,7 +65,7 @@ class FileChangeHandler(FileSystemEventHandler):
             self.tree.current_node = node
             self.tree.remove_node()
 
-def create_directory_and_files(file_node_map, node, path, imports):
+def create_directory_and_files(root_en_name, file_node_map, node, path, imports):
     """
     递归创建文件夹和文件
     @param node: 当前节点
@@ -88,9 +88,10 @@ def create_directory_and_files(file_node_map, node, path, imports):
 
     # 递归处理子节点
     for child in node.children:
-        create_directory_and_files(file_node_map, child, current_path, imports)
+        create_directory_and_files(root_en_name, file_node_map, child, current_path, imports)
+        print("child.file_path", child.file_path)
         # 添加导入语句
-        imports.append(f"from {child.file_path[0:child.file_path.rindex('/').replace('/','.')]} import *")
+        imports.append(f"from {child.file_path[child.file_path.index(root_en_name)+len(root_en_name)+1:child.file_path.rindex(".")].replace("\\",".")} import *")
 
     # 回溯时创建当前节点的文件
     file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")

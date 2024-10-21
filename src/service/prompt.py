@@ -124,3 +124,39 @@ Output:
     }
 ]
 """
+
+one_shot2="""
+
+The following is an example of the input and output:
+
+####################################
+input: 
+从根节点到当前节点的名字依次是 Z->计算器，请对 计算器 进行功能拆解
+#####################################
+Inference:
+用户想要对 计算器 进行功能拆解, 我认为 计算器 需要具有 加法, 减法, 乘法, 除法 等功能，所以返回 加法, 减法, 乘法, 除法
+####################################
+Output:
+[
+    {
+        "name": "加法",
+        "enName": "Add Operation",
+        "description": "实现两个数相加的功能"
+    },
+    {
+        "name": "减法",
+        "enName": "Subtraction Operation",
+        "description": "实现两个数相减的功能"
+    },
+    {
+        "name": "乘法",
+        "enName": "Multiplication Operation",
+        "description": "实现两个数相乘的功能"
+    },
+    {
+        "name": "除法",
+        "enName": "Division Operation",
+        "description": "实现两个数相除的功能"
+    }
+]
+"""
