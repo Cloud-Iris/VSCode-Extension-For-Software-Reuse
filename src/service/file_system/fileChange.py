@@ -91,7 +91,10 @@ def create_directory_and_files(root_en_name, file_node_map, node, path, imports)
         create_directory_and_files(root_en_name, file_node_map, child, current_path, imports)
         print("child.file_path", child.file_path)
         # 添加导入语句
-        imports.append(f"from {child.file_path[child.file_path.index(root_en_name)+len(root_en_name)+1:child.file_path.rindex(".")].replace("\\",".")} import *")
+        module_path = child.file_path[child.file_path.index(root_en_name)+len(root_en_name)+1:child.file_path.rindex('.')]
+        # 使用 os.path 的路径分隔符在 Windows 上是反斜杠 (\)，在 Unix 上是斜杠 (/)
+        module_path = module_path.replace(os.sep, '.')  # 将路径分隔符替换为点号
+        imports.append(f"from {module_path} import *")
 
     # 回溯时创建当前节点的文件
     file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")
