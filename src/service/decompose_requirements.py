@@ -148,7 +148,7 @@ class RequirementManager:
             print(f"加载树结构时发生错误: {e}")
 
         # else:
-        print("\n目前根目录没有系统，请问您需要实现什么系统：")
+        print("\n目前根目录没有系统，请问您有什么需求：")
         s = input()
 
         en_name, ch_name, detailed_description= self.generate_node(s)
