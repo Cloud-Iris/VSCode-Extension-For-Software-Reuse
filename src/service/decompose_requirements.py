@@ -49,8 +49,14 @@ class RequirementManager:
         Decompose the requirements into a list of requirements.
         """
         input = "The input that you should process is:\n" + input.strip()
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": role + task + input + one_shot}], options={"temperature": 0})
+        res = ollama.chat(
+            model="llama3:8b", 
+            stream=False, 
+            messages=[{"role": "user", "content": role + input + one_shot}], 
+            options={"temperature": 0},
+        )
         content = res['message']['content']
+        print("content: ", content)
         pattern = r'\[([^\]]*)\]'
         matches = re.findall(pattern, content)
         s = "["
