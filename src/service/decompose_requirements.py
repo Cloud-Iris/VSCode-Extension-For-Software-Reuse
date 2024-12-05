@@ -48,7 +48,7 @@ class RequirementManager:
         """
         Decompose the requirements into a list of requirements.
         """
-        input = "The input that you should process is:\n" + input.strip()
+        input = "The requirement that you should decompose is:\n" + input.strip()
         res = ollama.chat(
             model="qwen2.5-coder:7b", 
             stream=False, 
@@ -165,6 +165,7 @@ class RequirementManager:
 
         # 生成根节点
         self.tree = RequirementTree(en_name, ch_name, detailed_description, '')
+        self.tree.current_node = self.tree.root
         self.node_names = self.display_tree(self.tree.root, 0, False)
 
         return s, "disassemble"
@@ -440,7 +441,7 @@ class RequirementManager:
                     print("\n=====================\n当前树结构如下：\n=====================")
                     self.node_names = self.display_tree(self.tree.root)
                     print("=====================")
-                    print("\n对不起，我无法理解您的需求，您可以进行增删改查、拆解和生成代码的功能，或者输入q/quit/exit/no退出系统。")
+                    print("\n对不起，我无法理解您的需求，或者输入q/quit/exit/no退出系统。")
                     s = input().strip()
                 else:
                     break
