@@ -25,8 +25,7 @@ class RequirementManager:
         You are language expert.
         Classify the following requirement into one of the categories: add, delete, disassemble, modify, code, show_information. Only one word is returned.
         Requirement: {requirement}
-        {classify_example}
-        """.format(requirement=s, classify_example=classify_example)
+        """.format(requirement=s)
         res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         classification = res['message']['content'].lower()
         if "modify" in classification:
@@ -103,7 +102,6 @@ class RequirementManager:
         node_name = []
         if depth != 0:
             node_name.append(node.ch_name)
-            node_name.append(node.en_name)
         if display:
             print("\t" * depth + node.ch_name)
         if hasattr(node, 'children') and node.children:
@@ -263,9 +261,13 @@ class RequirementManager:
 
         while selected_node_name not in self.node_names and selected_node_name != "None":
             if selected_node_name != "":
-                selected_node_name = "你之前选择了"+selected_node_name+"，这个节点不在列表中，请重新选择。"
-            prompt = """你是一个做选择题的专家。用户提出了这样的需求: {requirement} from 列表[{node_names}]。请从列表里面选择一个最符合用户需求的选项，如果列表没有符合的选项，请返回None。{selected_node_name}""".format(
-                requirement=s, node_names=", ".join(self.node_names), selected_node_name=selected_node_name
+                selected_node_name = "你之前从列表中选择了"+selected_node_name+"，这个选择不在列表中，请从列表中选择一个。"
+            prompt = """你是一个意图识别的专家。用户提出了这样的需求:{requirement}。\n\
+请从列表[{node_names}]中识别用户想对哪个进行操作。\n\
+如果你觉得列表里面没有用户想要操作的节点，请返回None。\n\
+{selected_node_name}\n\
+下面是一个输出示例：**一个词**""".format(
+                requirement=s, node_names=", ".join(self.node_names), selected_node_name=selected_node_name, location_node_example=location_node_example
             )
             print("prompt: ", prompt)
 
@@ -324,7 +326,7 @@ class RequirementManager:
         while s.lower() not in ["no", "q", "quit", "exit"]:
             
             if classify.startswith("add"):
-                print("\n=====================\n正在执行\n=====================")
+                # print("\n=====================\n正在执行\n=====================")
                
                 # 将当前节点转换为内部节点
                 self.tree.convert_leaf_to_internal(self.tree.current_node)
@@ -334,7 +336,7 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
-                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'].replace("增加","").replace("添加",""), child['description'], '')
+                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
 
                 # 显示当前树结构
                 print("\n=====================\n当前树结构如下：\n=====================")
@@ -397,7 +399,7 @@ class RequirementManager:
                 self.display_node("您想要的节点信息如下所示", self.tree.current_node)
 
             elif classify.startswith("disassemble"):
-                print("\n=====================\n正在执行\n=====================")
+                # print("\n=====================\n正在执行\n=====================")
 
                 # 获取从根节点到当前节点的所有ch_name
                 path = self.get_path_to_current_node()
@@ -411,7 +413,7 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
-                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'].replace("增加","").replace("添加",""), child['description'], '')
+                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
 
                 # 显示当前树结构
                 print("\n=====================\n当前树结构如下：\n=====================")
