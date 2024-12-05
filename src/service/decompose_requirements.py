@@ -23,28 +23,35 @@ class RequirementManager:
 
         str_node_names=",".join(self.node_names)
 
-        prompt = """
-        You are language expert.
-        Classify the following requirement into one of the categories: add, delete, disassemble, modify, code, show_information. Only one word is returned.
-        Requirement: {requirement}
-        分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
-        """.format(requirement=s, node_names=str_node_names)
-        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
-        classification = res['message']['content'].lower()
-        if "modify" in classification:
-            return "modify"
-        elif "add" in classification:
-            return "add"
-        elif "delete" in classification:
-            return "delete"
-        elif "code" in classification:
-            return "code"
-        elif "show_information" in classification:
-            return "show"
-        elif "disassemble" in classification:
-            return "disassemble"
+        res="n"
+        classification=""
+
+        while res.lower() not in ["y", ""]:
+            prompt = """
+            你是语言专家。
+            将以下需求分类到以下类别之一：添加、删除、拆解、修改、编写代码、展示信息。仅返回一个词。
+            需求：{requirement}
+            分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
+            """.format(requirement=s, node_names=str_node_names)
+            res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+            classification = res['message']['content'].lower()
+            print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
+            res = input().strip().lower()
+
+        if "修改" in classification:
+            return "修改"
+        elif "添加" in classification:
+            return "添加"
+        elif "删除" in classification:
+            return "删除"
+        elif "编写代码" in classification:
+            return "编写代码"
+        elif "展示信息" in classification:
+            return "展示信息"
+        elif "拆解" in classification:
+            return "拆解"
         else:
-            return None
+            return ""
 
     def decompose_requirements(self, input):
         """
@@ -168,7 +175,7 @@ class RequirementManager:
         self.tree.current_node = self.tree.root
         self.node_names = self.display_tree(self.tree.root, 0, False)
 
-        return s, "disassemble"
+        return s, "拆解"
 
     def generate_node(self, requirement):
         prompt = """
@@ -265,7 +272,7 @@ class RequirementManager:
             if selected_node_name != "":
                 selected_node_name = "你之前从列表中选择了"+selected_node_name+"，这个选择不在列表中，请从列表中选择一个。"
             prompt = """你是一个意图识别的专家。用户提出了这样的需求:{requirement}。\n\
-请从列表[{node_names}]中识别用户想对哪个进行操作。\n\
+请从列表[{node_names}]中识别支持用户执行该操作的最小单位。\n\
 如果你觉得列表里面没有用户想要操作的节点，请返回第一个值。\n\
 {selected_node_name}\n\
 下面是一个输出示例：**一个词**""".format(
@@ -327,7 +334,7 @@ class RequirementManager:
         
         while s.lower() not in ["no", "q", "quit", "exit"]:
             
-            if classify.startswith("add"):
+            if classify.startswith("添加"):
                 # print("\n=====================\n正在执行\n=====================")
                
                 # 将当前节点转换为内部节点
@@ -347,7 +354,7 @@ class RequirementManager:
                 self.node_names = self.display_tree(self.tree.root)
                 print("=====================")
             
-            elif classify.startswith("delete"):
+            elif classify.startswith("删除"):
                 not_delete = [self.tree.root.ch_name]
                 # 循环删除节点，直到用户确认删除
                 while self.tree.current_node is not None:
@@ -373,7 +380,7 @@ class RequirementManager:
                 print("=====================")
                 self.tree.current_node = self.tree.root
             
-            elif classify.startswith("modify"):
+            elif classify.startswith("修改"):
                 # 显示当前节点信息并询问用户需要修改成什么
                 self.display_node("您想要修改的节点信息如下所示", self.tree.current_node)
                 new_en_name = input(f"请输入新的英文名称，回车保留当前数据： {self.tree.current_node.en_name} ").strip() or self.tree.current_node.en_name
@@ -388,7 +395,7 @@ class RequirementManager:
                 self.node_names = self.display_tree(self.tree.root)
                 print("=====================")
             
-            elif classify.startswith("code"):
+            elif classify.startswith("编写代码"):
                 # 生成当前节点的代码
                 self.tree.current_node = self.tree.root
                 print("开始在目录{}生成代码...".format(self.filepath))
@@ -399,10 +406,10 @@ class RequirementManager:
                 self.start_watching()
                 print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
             
-            elif classify.startswith("show"):
+            elif classify.startswith("展示信息"):
                 self.display_node("您想要的节点信息如下所示", self.tree.current_node)
 
-            elif classify.startswith("disassemble"):
+            elif classify.startswith("拆解"):
                 # print("\n=====================\n正在执行\n=====================")
 
                 # 获取从根节点到当前节点的所有ch_name
@@ -438,16 +445,16 @@ class RequirementManager:
                 if s.lower() in ["no", "q", "quit", "exit"]:
                     return
                 # 分类用户输入的需求
+                self.tree.current_node = self.location_node(s)
                 classify = self.requirements_classification(s)
                 if classify.startswith("code"):
                     break
-                self.tree.current_node = self.location_node(s)
                 if self.tree.current_node is None:
                     # 显示当前树结构
                     print("\n=====================\n当前树结构如下：\n=====================")
                     self.node_names = self.display_tree(self.tree.root)
                     print("=====================")
-                    print("\n对不起，我无法理解您的需求，或者输入q/quit/exit/no退出系统。")
+                    print("\n对不起，我无法理解您的需求，您可以在输入中指明关键词：增删改查拆分，或者输入q/quit/exit/no退出系统。")
                     s = input().strip()
                 else:
                     break
