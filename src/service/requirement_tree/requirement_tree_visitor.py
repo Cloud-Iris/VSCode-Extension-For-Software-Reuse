@@ -60,7 +60,7 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
         Incorporate best practices and add comments where necessary. 
         Present only the refactored code.
         """.format(requirement=self.requirement,code=node.code)
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         node.code = extract_new_implementation_from_response(res['message']['content'])
     
     def visit_internal(self, node: 'RequirementInternalNode'):
@@ -77,7 +77,7 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
         If the submodules satisfy your need, present only the refactored code. Otherwise, reply 'No, I need ...' and your requirement.
         """.format(requirement=self.requirement, code=node.code, sub_module_codes=extract_submodule_codes(node))
 
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
 
         satisfiable = extract_satisfiability_from_response(res['message']['content'])
 
@@ -99,7 +99,7 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
         Write a python class called {name} to satisfy the requirement.
         Incorporate best practices and add comments where necessary. 
         """.format(name=node.en_name, requirement=node.description)
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         node.code = extract_new_implementation_from_response(res['message']['content'])
 
     def visit_internal(self, node: 'RequirementInternalNode'):
@@ -118,7 +118,7 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
         Incorporate best practices and add comments where necessary. 
         If the submodules satisfy your need, present only the refactored code. Otherwise, reply 'No, I need ...' and your requirement.
         """.format(requirement=node.description, sub_module_codes=extract_submodule_codes(node))
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         satisfiable = extract_satisfiability_from_response(res['message']['content'])
         if not satisfiable: # 需要修改子节点
             req = extract_child_requirement_from_response(res['message']['content'])

@@ -27,7 +27,7 @@ class RequirementManager:
         Requirement: {requirement}
         {classify_example}
         """.format(requirement=s, classify_example=classify_example)
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         classification = res['message']['content'].lower()
         if "modify" in classification:
             return "modify"
@@ -50,7 +50,7 @@ class RequirementManager:
         """
         input = "The input that you should process is:\n" + input.strip()
         res = ollama.chat(
-            model="llama3:8b", 
+            model="qwen2.5-coder:7b", 
             stream=False, 
             messages=[{"role": "user", "content": role + input + one_shot}], 
             options={"temperature": 0},
@@ -180,7 +180,7 @@ class RequirementManager:
 
         {init_tree_example}
         """.format(requirement=requirement, init_tree_example=init_tree_example)
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         description = res['message']['content'].strip()
         lines = description.split('\n')
 
@@ -265,7 +265,7 @@ class RequirementManager:
         {location_node_example}
         """.format(requirement=s, node_names=", ".join(self.node_names), location_node_example=location_node_example)
 
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         selected_node_name = res['message']['content'].strip()
 
         # print(f"=====================\n筛选前：{selected_node_name}\n=====================")
@@ -324,8 +324,6 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
-                    if child["enName"] in self.node_names or child["name"] in self.node_names:
-                        continue
                     self.tree.add_child(child['enName'].replace(" ",""), child['name'].replace("增加","").replace("添加",""), child['description'], '')
 
                 # 显示当前树结构
@@ -403,8 +401,6 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
-                    if child["enName"] in self.node_names or child["name"] in self.node_names:
-                        continue
                     self.tree.add_child(child['enName'].replace(" ",""), child['name'].replace("增加","").replace("添加",""), child['description'], '')
 
                 # 显示当前树结构
@@ -435,7 +431,7 @@ class RequirementManager:
                     print("\n=====================\n当前树结构如下：\n=====================")
                     self.node_names = self.display_tree(self.tree.root)
                     print("=====================")
-                    print("\n对不起，我无法理解您的需求，请详细描述您的需求，或者输入q/quit/exit/no退出系统。")
+                    print("\n对不起，我无法理解您的需求，您可以进行增删改查、拆解和生成代码的功能，或者输入q/quit/exit/no退出系统。")
                     s = input().strip()
                 else:
                     break
