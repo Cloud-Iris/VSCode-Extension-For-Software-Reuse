@@ -21,11 +21,14 @@ class RequirementManager:
         将用户输入的需求分类
         """
 
+        str_node_names=",".join(self.node_names)
+
         prompt = """
         You are language expert.
         Classify the following requirement into one of the categories: add, delete, disassemble, modify, code, show_information. Only one word is returned.
         Requirement: {requirement}
-        """.format(requirement=s)
+        分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
+        """.format(requirement=s, node_names=str_node_names)
         res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         classification = res['message']['content'].lower()
         if "modify" in classification:
@@ -100,8 +103,7 @@ class RequirementManager:
         @param depth: 当前节点的深度
         """
         node_name = []
-        if depth != 0:
-            node_name.append(node.ch_name)
+        node_name.append(node.ch_name)
         if display:
             print("\t" * depth + node.ch_name)
         if hasattr(node, 'children') and node.children:
@@ -264,7 +266,7 @@ class RequirementManager:
                 selected_node_name = "你之前从列表中选择了"+selected_node_name+"，这个选择不在列表中，请从列表中选择一个。"
             prompt = """你是一个意图识别的专家。用户提出了这样的需求:{requirement}。\n\
 请从列表[{node_names}]中识别用户想对哪个进行操作。\n\
-如果你觉得列表里面没有用户想要操作的节点，请返回None。\n\
+如果你觉得列表里面没有用户想要操作的节点，请返回第一个值。\n\
 {selected_node_name}\n\
 下面是一个输出示例：**一个词**""".format(
                 requirement=s, node_names=", ".join(self.node_names), selected_node_name=selected_node_name, location_node_example=location_node_example
@@ -331,6 +333,8 @@ class RequirementManager:
                 # 将当前节点转换为内部节点
                 self.tree.convert_leaf_to_internal(self.tree.current_node)
                 print("current_node: ", self.tree.current_node.ch_name)
+                # 先generate一个current_node的叶子节点，再拆解这个叶子节点
+
                 # 分解需求
                 children = self.decompose_requirements(s)
                 children = json.loads(children)
