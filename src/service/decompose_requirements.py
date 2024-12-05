@@ -103,6 +103,7 @@ class RequirementManager:
         node_name = []
         if depth != 0:
             node_name.append(node.ch_name)
+            node_name.append(node.en_name)
         if display:
             print("\t" * depth + node.ch_name)
         if hasattr(node, 'children') and node.children:
@@ -323,6 +324,8 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
+                    if child["enName"] in self.node_names or child["name"] in self.node_names:
+                        continue
                     self.tree.add_child(child['enName'].replace(" ",""), child['name'].replace("增加","").replace("添加",""), child['description'], '')
 
                 # 显示当前树结构
@@ -400,6 +403,8 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
+                    if child["enName"] in self.node_names or child["name"] in self.node_names:
+                        continue
                     self.tree.add_child(child['enName'].replace(" ",""), child['name'].replace("增加","").replace("添加",""), child['description'], '')
 
                 # 显示当前树结构
