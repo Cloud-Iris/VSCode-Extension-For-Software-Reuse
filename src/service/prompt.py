@@ -104,24 +104,24 @@ Inference:
 Output:
 [
     {
-        "name": "B",
+        "chName": "中文名",
         "enName": "B Operation",
-        "description": "实现两个数相加的功能"
+        "description": "实现xxx功能"
     },
     {
-        "name": "C",
+        "chName": "中文名",
         "enName": "C Operation",
-        "description": "实现两个数相减的功能"
+        "description": "实现xxx功能"
     },
     {
-        "name": "D",
+        "chName": "中文名",
         "enName": "D Operation",
-        "description": "实现两个数相乘的功能"
+        "description": "实现xxx功能"
     },
     {
-        "name": "E",
+        "chName": "中文名",
         "enName": "E Operation",
-        "description": "实现两个数相除的功能"
+        "description": "实现xxx功能"
     }
 ]
 """

@@ -152,10 +152,11 @@ class RequirementManager:
 
                         return s, classify
         except Exception as e:
-            print(f"加载树结构时发生错误: {e}")
+            # print(f"加载树结构时发生错误: {e}")
+            pass
 
         # else:
-        print("\n目前根目录没有系统，请问您有什么需求：")
+        print("\n没有存档记录，请问您有什么新需求：")
         s = input()
 
         en_name, ch_name, detailed_description= self.generate_node(s)
@@ -252,34 +253,42 @@ class RequirementManager:
         根据用户输入的需求描述，定位到树中的一个节点
         """
 
-        for node_name in self.node_names:
-            if node_name in s:
-                return self.dfs_search_node_name(self.tree.root, node_name)
+        # prompt = """你是一个做选择题的专家。用户提出了这样的需求: {requirement} from [{node_names}]。请选择一个最符合用户需求的选项，如果没有符合的选项，请返回None:\
+        # Return only the full name of the selected name without Spaces.\
+        # {location_node_example}
+        # """.format(requirement=s, node_names=", ".join(self.node_names), location_node_example=location_node_example)
 
-        prompt = """
-        You are a top-notch language expert. 
-        For the following requirement: {requirement}. 
-        From the list of names below, select the one that best meets your needs or return None if they don't meet your need. You cannot return a name that is not in the list:
-        [{node_names}]
-        Return only the full name of the selected name without Spaces.
-        {location_node_example}
-        """.format(requirement=s, node_names=", ".join(self.node_names), location_node_example=location_node_example)
+        selected_node_name=""
 
-        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
-        selected_node_name = res['message']['content'].strip()
+        while selected_node_name not in self.node_names and selected_node_name != "None":
+            if selected_node_name != "":
+                selected_node_name = "你之前选择了"+selected_node_name+"，这个节点不在列表中，请重新选择。"
+            prompt = """你是一个做选择题的专家。用户提出了这样的需求: {requirement} from 列表[{node_names}]。请从列表里面选择一个最符合用户需求的选项，如果列表没有符合的选项，请返回None。{selected_node_name}""".format(
+                requirement=s, node_names=", ".join(self.node_names), selected_node_name=selected_node_name
+            )
+            print("prompt: ", prompt)
 
-        # print(f"=====================\n筛选前：{selected_node_name}\n=====================")
+            res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+            selected_node_name = res['message']['content'].strip()
 
-        # 定位字符串中return的位置，只要return后面的内容
-        if "return" in selected_node_name:
-            selected_node_name = selected_node_name[selected_node_name.index("return")+6:].strip()
-        if ":" in selected_node_name:
-            selected_node_name = selected_node_name[selected_node_name.rindex(":")+1:].strip()
-        if "output" in selected_node_name:
-            selected_node_name = selected_node_name[selected_node_name.index("output")+6:].strip()
-        if "Output" in selected_node_name:
-            selected_node_name = selected_node_name[selected_node_name.index("Output")+6:].strip()
+            print(f"=====================\n筛选前：{selected_node_name}\n=====================")
 
+            # 定位字符串中return的位置，只要return后面的内容
+            if "return" in selected_node_name:
+                selected_node_name = selected_node_name[selected_node_name.index("return")+6:].strip()
+            if ":" in selected_node_name:
+                selected_node_name = selected_node_name[selected_node_name.rindex(":")+1:].strip()
+            if "output" in selected_node_name:
+                selected_node_name = selected_node_name[selected_node_name.index("output")+6:].strip()
+            if "Output" in selected_node_name:
+                selected_node_name = selected_node_name[selected_node_name.index("Output")+6:].strip()
+            if "```python" in selected_node_name:
+                selected_node_name = selected_node_name[selected_node_name.index("```python")+8:selected_node_name.rindex("```")].strip()
+                # selected_node_name只保留中文
+                selected_node_name = "".join([word for word, flag in pseg.cut(selected_node_name) if flag == "x"])
+            if "**" in selected_node_name:
+                selected_node_name = selected_node_name[selected_node_name.index("**")+2:selected_node_name.rindex("**")].strip()
+            
         # print("node_names: ", self.node_names)
         print(f"=====================\n大模型选择的节点是：{selected_node_name}\n=====================")
 
@@ -324,7 +333,7 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
-                    self.tree.add_child(child['enName'].replace(" ",""), child['name'].replace("增加","").replace("添加",""), child['description'], '')
+                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'].replace("增加","").replace("添加",""), child['description'], '')
 
                 # 显示当前树结构
                 print("\n=====================\n当前树结构如下：\n=====================")
@@ -401,7 +410,7 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
-                    self.tree.add_child(child['enName'].replace(" ",""), child['name'].replace("增加","").replace("添加",""), child['description'], '')
+                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'].replace("增加","").replace("添加",""), child['description'], '')
 
                 # 显示当前树结构
                 print("\n=====================\n当前树结构如下：\n=====================")
