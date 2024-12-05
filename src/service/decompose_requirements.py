@@ -26,10 +26,10 @@ class RequirementManager:
         res="n"
         classification=""
 
-        while res.lower() not in ["y", ""]:
+        while res not in ["y", ""]:
             prompt = """
             你是语言专家。
-            将以下需求分类到以下类别之一：添加、删除、拆解、修改、编写代码、展示信息。仅返回一个词。
+            将以下需求分类到以下类别之一：添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
             需求：{requirement}
             分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
             """.format(requirement=s, node_names=str_node_names)
@@ -37,6 +37,9 @@ class RequirementManager:
             classification = res['message']['content'].lower()
             print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
             res = input().strip().lower()
+            if res == "n":
+                print("请选择一种操作：添加、删除、拆解、修改、生成代码、展示信息。")
+                s= input().strip().lower()
 
         if "修改" in classification:
             return "修改"
@@ -44,8 +47,8 @@ class RequirementManager:
             return "添加"
         elif "删除" in classification:
             return "删除"
-        elif "编写代码" in classification:
-            return "编写代码"
+        elif "生成代码" in classification:
+            return "生成代码"
         elif "展示信息" in classification:
             return "展示信息"
         elif "拆解" in classification:
@@ -256,7 +259,7 @@ class RequirementManager:
         observer_thread.daemon = True
         observer_thread.start()
 
-    def location_node(self, s):
+    def location_node(self, s, type_name="other"):
         """
         根据用户输入的需求描述，定位到树中的一个节点
         """
@@ -271,13 +274,22 @@ class RequirementManager:
         while selected_node_name not in self.node_names and selected_node_name != "None":
             if selected_node_name != "":
                 selected_node_name = "你之前从列表中选择了"+selected_node_name+"，这个选择不在列表中，请从列表中选择一个。"
-            prompt = """你是一个意图识别的专家。用户提出了这样的需求:{requirement}。\n\
+            if type_name == "other":
+                prompt = """你是一个意图识别的专家。用户提出了这样的需求:{requirement}。\n\
 请从列表[{node_names}]中识别支持用户执行该操作的最小单位。\n\
 如果你觉得列表里面没有用户想要操作的节点，请返回第一个值。\n\
 {selected_node_name}\n\
 下面是一个输出示例：**一个词**""".format(
-                requirement=s, node_names=", ".join(self.node_names), selected_node_name=selected_node_name, location_node_example=location_node_example
-            )
+                    requirement=s, node_names=", ".join(self.node_names), selected_node_name=selected_node_name, location_node_example=location_node_example
+                )
+            elif type_name == "delete":
+                prompt = """你是一个意图识别的专家。用户提出了这样的需求:{requirement}。\n\
+请从列表[None, {node_names}]中识别支持用户执行该操作的最小单位。\n\
+如果你觉得列表里面没有用户想要操作的节点，请返回None。\n\
+{selected_node_name}\n\
+下面是一个输出示例：**一个词**""".format(
+                    requirement=s, node_names=", ".join(self.node_names), selected_node_name=selected_node_name, location_node_example=location_node_example
+                )
             print("prompt: ", prompt)
 
             res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
@@ -307,18 +319,18 @@ class RequirementManager:
         if self.tree.current_node==None:
             return self.dfs_search_node_name(self.tree.root, selected_node_name)
         # 先看当前节点是不是
-        if self.tree.current_node.ch_name in selected_node_name:
+        if self.tree.current_node.ch_name == selected_node_name:
             if self.tree.current_node.ch_name not in self.node_names:
                 return self.dfs_search_node_name(self.tree.root, selected_node_name)
             return self.tree.current_node
         # 再看当前节点的父节点是不是
-        if self.tree.current_node.parent and self.tree.current_node.parent.ch_name in selected_node_name:
+        if self.tree.current_node.parent and self.tree.current_node.parent.ch_name == selected_node_name:
             if self.tree.current_node.ch_name not in self.node_names:
                 return self.dfs_search_node_name(self.tree.root, selected_node_name)
             return self.tree.current_node.parent
         # 再看当前节点的子节点是不是
         for child in self.tree.current_node.children:
-            if child.ch_name in selected_node_name:
+            if child.ch_name == selected_node_name:
                 if self.tree.current_node.ch_name not in self.node_names:
                     return self.dfs_search_node_name(self.tree.root, selected_node_name)
                 return child
@@ -341,9 +353,13 @@ class RequirementManager:
                 self.tree.convert_leaf_to_internal(self.tree.current_node)
                 print("current_node: ", self.tree.current_node.ch_name)
                 # 先generate一个current_node的叶子节点，再拆解这个叶子节点
+                en_name, ch_name, detailed_description= self.generate_node(s)
+                self.tree.add_child(en_name, ch_name, detailed_description, '')
+                self.tree.current_node = self.tree.current_node.children[-1]
+                self.node_names = self.display_tree(self.tree.root, 0, False)
 
                 # 分解需求
-                children = self.decompose_requirements(s)
+                children = self.decompose_requirements(self.tree.current_node.ch_name)
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
@@ -372,7 +388,7 @@ class RequirementManager:
                         if node_name in self.node_names:
                             self.node_names.remove(node_name)
                     # print(self.node_names)
-                    self.tree.current_node = self.location_node(s)
+                    self.tree.current_node = self.location_node(s, "delete")
                 
                 # 显示当前树结构
                 print("\n=====================\n当前树结构如下：\n=====================")
@@ -395,7 +411,7 @@ class RequirementManager:
                 self.node_names = self.display_tree(self.tree.root)
                 print("=====================")
             
-            elif classify.startswith("编写代码"):
+            elif classify.startswith("生成代码"):
                 # 生成当前节点的代码
                 self.tree.current_node = self.tree.root
                 print("开始在目录{}生成代码...".format(self.filepath))
