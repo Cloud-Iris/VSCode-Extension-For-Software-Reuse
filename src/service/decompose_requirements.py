@@ -240,7 +240,7 @@ class RequirementManager:
         """
         event_handler = FileChangeHandler(self.tree.file_node_map, self.tree)
         observer = Observer()
-        observer.schedule(event_handler, self.filepath+"/"+self.tree.root.en_name, recursive=True)
+        observer.schedule(event_handler, self.tree.root.en_name, recursive=True)
         observer.start()
 
         def run_observer():
@@ -418,7 +418,7 @@ class RequirementManager:
                 self.tree.construct_current_code(self.filepath)
                 # 创建文件夹和文件
                 create_directory_and_files(self.tree.root.en_name, self.tree.file_node_map,self.tree.current_node, self.filepath, [])
-                save_tree_to_json(self.tree, self.filepath+"/"+self.tree.root.en_name+"/restore.json")
+                save_tree_to_json(self.tree, self.tree.root.en_name+"/restore.json")
                 self.start_watching()
                 print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
             

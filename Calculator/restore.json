@@ -1,0 +1,61 @@
+{
+    "en_name": "Calculator",
+    "ch_name": "计算器",
+    "description": "A calculator is an electronic device that performs mathematical calculations, such as addition, subtraction, multiplication, and division. It can be either a physical device with buttons or a software application on a computer, smartphone, or other digital devices. Calculators are widely used in various fields including education, finance, engineering, and everyday life for quick and accurate arithmetic operations. They come in different forms such as basic calculators, scientific calculators, graphing calculators, and even specialized calculators for specific tasks like statistics or programming.",
+    "file_path": "Calculator/Calculator.py",
+    "parent": "",
+    "code": "class NumberAdder:\n    \"\"\"A simple class to add two numbers.\"\"\"\n\n    def add(self, num1, num2):\n        \"\"\"\n        Adds two numbers and returns the result.\n\n        Parameters:\n            num1 (int/float): The first number.\n            num2 (int/float): The second number.\n\n        Returns:\n            int/float: The sum of num1 and num2.\n        \"\"\"\n        return num1 + num2\n\nclass NumberSubtractor:\n    \"\"\"A class to perform subtraction of two numbers.\"\"\"\n\n    def subtract(self, num1, num2):\n        \"\"\"\n        Subtract num2 from num1 and return the result.\n\n        Parameters:\n            num1 (int/float): The first number.\n            num2 (int/float): The second number to be subtracted from the first number.\n\n        Returns:\n            int/float: The result of the subtraction.\n        \"\"\"\n        return num1 - num2\n\nclass Multiplier:\n    \"\"\"A simple class to perform multiplication of two numbers.\"\"\"\n\n    def multiply(self, a, b):\n        \"\"\"\n        Multiplies two numbers and returns the result.\n\n        Parameters:\n            a (int/float): The first number.\n            b (int/float): The second number.\n\n        Returns:\n            int/float: The product of the two numbers.\n        \"\"\"\n        return a * b\n\nclass Divider:\n    \"\"\"A class to perform division of two numbers.\"\"\"\n\n    def divide(self, num1, num2):\n        \"\"\"\n        Divides num1 by num2 and returns the result.\n\n        Parameters:\n            num1 (float or int): The numerator.\n            num2 (float or int): The denominator.\n\n        Returns:\n            float: The result of the division.\n\n        Raises:\n            ValueError: If num2 is zero, as division by zero is not allowed.\n        \"\"\"\n        if num2 == 0:\n            raise ValueError(\"Cannot divide by zero.\")\n        return num1 / num2\n\nclass Calculator:\n    def __init__(self):\n        # Initialize the calculation result\n        self.result = 0\n\n    def add(self, value):\n        \"\"\"Add a value to the current result.\"\"\"\n        self.result += value\n\n    def subtract(self, value):\n        \"\"\"Subtract a value from the current result.\"\"\"\n        self.result -= value\n\n    def multiply(self, value):\n        \"\"\"Multiply the current result by a value.\"\"\"\n        self.result *= value\n\n    def divide(self, value):\n        \"\"\"Divide the current result by a value. Handle division by zero.\"\"\"\n        if value == 0:\n            raise ValueError(\"Cannot divide by zero.\")\n        self.result /= value\n\n    def clear_result(self):\n        \"\"\"Clear the current calculation result.\"\"\"\n        # Set the result to zero\n        self.result = 0\n        print(\"Result cleared.\")\n\n# Example usage:\ncalc = Calculator()\ncalc.add(10)\ncalc.subtract(5)\nprint(f\"Current Result: {calc.result}\")  # Output: Current Result: 5\n\ncalc.clear_result()\nprint(f\"Current Result after clearing: {calc.result}\")  # Output: Current Result after clearing: 0",
+    "id": "f1c85e31-f098-407b-ab56-0c0ccde27420",
+    "children": [
+        {
+            "en_name": "Addition",
+            "ch_name": "加法",
+            "description": "实现两个数相加的功能",
+            "file_path": "Calculator/Addition/Addition.py",
+            "parent": "f1c85e31-f098-407b-ab56-0c0ccde27420",
+            "code": "class NumberAdder:\n    \"\"\"\n    A simple class to add two numbers.\n    \n    Methods:\n        add(num1, num2): Adds two numbers and returns the result.\n    \"\"\"\n\n    def add(self, num1, num2):\n        \"\"\"\n        Adds two numbers and returns the result.\n        \n        Parameters:\n            num1 (int/float): The first number.\n            num2 (int/float): The second number.\n            \n        Returns:\n            int/float: The sum of num1 and num2.\n        \"\"\"\n        return num1 + num2\n\n# Example usage:\nif __name__ == \"__main__\":\n    adder = NumberAdder()\n    result = adder.add(5, 3)\n    print(f\"The sum is: {result}\")",
+            "id": "d81ecb99-6ee5-4cff-a96f-b9f2389086c0",
+            "children": []
+        },
+        {
+            "en_name": "Subtraction",
+            "ch_name": "减法",
+            "description": "实现两个数相减的功能",
+            "file_path": "Calculator/Subtraction/Subtraction.py",
+            "parent": "f1c85e31-f098-407b-ab56-0c0ccde27420",
+            "code": "class NumberSubtractor:\n    \"\"\"\n    A class to perform subtraction of two numbers.\n    \n    Methods:\n        subtract(num1, num2): Subtracts num2 from num1 and returns the result.\n    \"\"\"\n\n    def subtract(self, num1, num2):\n        \"\"\"\n        Subtract num2 from num1 and return the result.\n\n        Parameters:\n            num1 (int/float): The first number.\n            num2 (int/float): The second number to be subtracted from the first number.\n\n        Returns:\n            int/float: The result of the subtraction.\n        \"\"\"\n        # Perform the subtraction\n        result = num1 - num2\n        \n        # Return the result\n        return result\n\n# Example usage:\nif __name__ == \"__main__\":\n    subtractor = NumberSubtractor()\n    result = subtractor.subtract(10, 5)\n    print(\"The result of subtraction is:\", result)",
+            "id": "d20798ab-a51b-41c8-a02f-6712e3b2912a",
+            "children": []
+        },
+        {
+            "en_name": "Multiplication",
+            "ch_name": "乘法",
+            "description": "实现两个数相乘的功能",
+            "file_path": "Calculator/Multiplication/Multiplication.py",
+            "parent": "f1c85e31-f098-407b-ab56-0c0ccde27420",
+            "code": "class Multiplier:\n    \"\"\"\n    A simple class to perform multiplication of two numbers.\n    \n    Methods:\n        multiply(a, b): Multiplies two numbers and returns the result.\n    \"\"\"\n\n    def multiply(self, a, b):\n        \"\"\"\n        Multiplies two numbers and returns the result.\n        \n        Parameters:\n            a (int/float): The first number.\n            b (int/float): The second number.\n            \n        Returns:\n            int/float: The product of the two numbers.\n        \"\"\"\n        return a * b\n\n# Example usage:\nif __name__ == \"__main__\":\n    multiplier = Multiplier()\n    result = multiplier.multiply(3, 4)\n    print(f\"The product of 3 and 4 is {result}\")",
+            "id": "9ec69d38-6715-4102-999e-03e5fd1cdcf5",
+            "children": []
+        },
+        {
+            "en_name": "Division",
+            "ch_name": "除法",
+            "description": "实现两个数相除的功能",
+            "file_path": "Calculator/Division/Division.py",
+            "parent": "f1c85e31-f098-407b-ab56-0c0ccde27420",
+            "code": "class Divider:\n    \"\"\"\n    A class to perform division of two numbers.\n    \n    Methods:\n        divide(num1, num2): Divides num1 by num2 and returns the result.\n    \"\"\"\n\n    def divide(self, num1, num2):\n        \"\"\"\n        Divides num1 by num2 and returns the result.\n        \n        Parameters:\n            num1 (float or int): The numerator.\n            num2 (float or int): The denominator.\n            \n        Returns:\n            float: The result of the division.\n            \n        Raises:\n            ValueError: If num2 is zero, as division by zero is not allowed.\n        \"\"\"\n        if num2 == 0:\n            raise ValueError(\"Cannot divide by zero.\")\n        \n        return num1 / num2\n\n# Example usage:\nif __name__ == \"__main__\":\n    divider = Divider()\n    \n    try:\n        result = divider.divide(10, 2)\n        print(f\"Result: {result}\")\n        \n        # This will raise an exception\n        result = divider.divide(5, 0)\n        print(f\"Result: {result}\")\n    except ValueError as e:\n        print(e)",
+            "id": "b6f6030d-b1ba-47cb-bb2a-f2870a705800",
+            "children": []
+        },
+        {
+            "en_name": "Clear",
+            "ch_name": "清零",
+            "description": "实现清除当前计算结果的功能",
+            "file_path": "Calculator/Clear/Clear.py",
+            "parent": "f1c85e31-f098-407b-ab56-0c0ccde27420",
+            "code": "class Calculator:\n    def __init__(self):\n        # Initialize the calculation result\n        self.result = 0\n\n    def add(self, value):\n        \"\"\"Add a value to the current result.\"\"\"\n        self.result += value\n\n    def subtract(self, value):\n        \"\"\"Subtract a value from the current result.\"\"\"\n        self.result -= value\n\n    def multiply(self, value):\n        \"\"\"Multiply the current result by a value.\"\"\"\n        self.result *= value\n\n    def divide(self, value):\n        \"\"\"Divide the current result by a value. Handle division by zero.\"\"\"\n        if value == 0:\n            raise ValueError(\"Cannot divide by zero.\")\n        self.result /= value\n\n    def clear_result(self):\n        \"\"\"Clear the current calculation result.\"\"\"\n        # Set the result to zero\n        self.result = 0\n        print(\"Result cleared.\")\n\n# Example usage:\ncalc = Calculator()\ncalc.add(10)\ncalc.subtract(5)\nprint(f\"Current Result: {calc.result}\")  # Output: Current Result: 5\n\ncalc.clear_result()\nprint(f\"Current Result after clearing: {calc.result}\")  # Output: Current Result after clearing: 0",
+            "id": "23ec80e2-d26c-4030-b1c6-07c491e7cab4",
+            "children": []
+        }
+    ]
+}

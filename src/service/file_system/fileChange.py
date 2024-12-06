@@ -124,6 +124,9 @@ def save_tree_to_json(tree, path):
             "children": [node_to_dict(child) for child in node.children]
         }
 
+    # 创建目录（如果不存在）
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
     with open(path, 'w', encoding="utf-8") as file:
         json.dump(node_to_dict(tree.root), file, ensure_ascii=False, indent=4)
 

@@ -19,6 +19,7 @@ class RequirementTreeVisitorBase:
 
 
 def extract_new_implementation_from_response(response: str) -> str:
+    print("response: ", response)
     matches = re.findall(r'```Python(.*?)```', response, re.DOTALL | re.IGNORECASE)
     if(len(matches) < 1):
         matches = re.findall(r'```(.*?)```', response, re.DOTALL)
@@ -97,6 +98,7 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
         You are a top-notch Python programmer. 
         For the following requirement: {requirement}. 
         Write a python class called {name} to satisfy the requirement.
+        请封装一些模块。
         Incorporate best practices and add comments where necessary. 
         """.format(name=node.en_name, requirement=node.description)
         res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
@@ -116,8 +118,8 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
         {sub_module_codes}
         If the interface you need was not providede by the submodule, please let me know what kind of interface you actually need.        
         Incorporate best practices and add comments where necessary. 
-        If the submodules satisfy your need, present only the refactored code. Otherwise, reply 'No, I need ...' and your requirement.
         """.format(requirement=node.description, sub_module_codes=extract_submodule_codes(node))
+        # If the submodules satisfy your need, present only the refactored code. Otherwise, reply 'No, I need ...' and your requirement.
         res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         satisfiable = extract_satisfiability_from_response(res['message']['content'])
         if not satisfiable: # 需要修改子节点
