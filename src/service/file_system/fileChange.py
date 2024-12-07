@@ -80,6 +80,7 @@ def create_directory_and_files(root_en_name, file_node_map, node, path, imports)
     # 如果是叶子节点，创建文件
     if len(node.children) == 0:
         file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")
+        os.makedirs(current_path, exist_ok=True)
         with open(file_path, 'w') as file:
             file.write(node.code)
         node.file_path = file_path

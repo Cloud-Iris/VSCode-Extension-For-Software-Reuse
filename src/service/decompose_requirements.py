@@ -38,8 +38,9 @@ class RequirementManager:
             print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
             res = input().strip().lower()
             if res == "n":
-                print("请选择一种操作：添加、删除、拆解、修改、生成代码、展示信息。")
+                print("意图识别失败，请在操作中加入如下关键词：添加、删除、拆解、修改、生成代码、展示信息。")
                 s= input().strip().lower()
+                self.tree.current_node = self.location_node(s)
 
         if "修改" in classification:
             return "修改"
