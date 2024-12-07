@@ -65,7 +65,7 @@ class FileChangeHandler(FileSystemEventHandler):
             self.tree.current_node = node
             self.tree.remove_node()
 
-def create_directory_and_files(file_node_map, node, path, imports):
+def create_directory_and_files(root_en_name, file_node_map, node, path, imports):
     """
     递归创建文件夹和文件
     @param node: 当前节点
@@ -80,6 +80,7 @@ def create_directory_and_files(file_node_map, node, path, imports):
     # 如果是叶子节点，创建文件
     if len(node.children) == 0:
         file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")
+        os.makedirs(current_path, exist_ok=True)
         with open(file_path, 'w') as file:
             file.write(node.code)
         node.file_path = file_path
@@ -88,9 +89,13 @@ def create_directory_and_files(file_node_map, node, path, imports):
 
     # 递归处理子节点
     for child in node.children:
-        create_directory_and_files(file_node_map, child, current_path, imports)
+        create_directory_and_files(root_en_name, file_node_map, child, current_path, imports)
+        print("child.file_path", child.file_path)
         # 添加导入语句
-        imports.append(f"from {child.en_name.replace(' ', '_')}.{child.en_name.replace(' ', '_')} import *")
+        module_path = child.file_path[child.file_path.index(root_en_name)+len(root_en_name)+1:child.file_path.rindex('.')]
+        # 使用 os.path 的路径分隔符在 Windows 上是反斜杠 (\)，在 Unix 上是斜杠 (/)
+        module_path = module_path.replace(os.sep, '.')  # 将路径分隔符替换为点号
+        imports.append(f"from {module_path} import *")
 
     # 回溯时创建当前节点的文件
     file_path = os.path.join(current_path, f"{node.en_name.replace(' ', '_')}.py")
@@ -119,6 +124,9 @@ def save_tree_to_json(tree, path):
             "id": str(node.id),
             "children": [node_to_dict(child) for child in node.children]
         }
+
+    # 创建目录（如果不存在）
+    os.makedirs(os.path.dirname(path), exist_ok=True)
 
     with open(path, 'w', encoding="utf-8") as file:
         json.dump(node_to_dict(tree.root), file, ensure_ascii=False, indent=4)

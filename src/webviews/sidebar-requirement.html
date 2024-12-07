@@ -4,36 +4,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>过程树</title>
+    <title>需求分解</title>
+    <link rel="stylesheet" href="###CSS">
+    <!-- <link rel="stylesheet" href="./css/style-requirement.css"> -->
+    <!-- 使用 jsDelivr CDN 直接导入 axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
-    <!-- <h1>需求大纲</h1>
-    <p>This is a static document. Click on the <a href="#" id="clickable-text">clickable text</a>.</p>
-    <h3>细粒度需求</h3>
-    <p>点击这里对需求生成代码建议: <a href="#" id="editor-dialog">需要生成代码建议的需求</a>.</p> -->
-    <h1>计算器</h1>
-    <p><a href="#" class="editor-dialog">加法</a></p>
-    <p><a href="#" class="editor-dialog">减法</a></p>
-    
-    
+    <div class="input-container" id="input-container">
+        <input type="text" id="requirement-input" placeholder="请输入需求">
+        <button onclick="submitRequirement()">提交</button>
+        <div id="error-message" class="error-message"></div>
+    </div>
+    <!-- 将用户的输入需求以 h1 展示在页面上 -->
+    <div class="requirement" id="requirement-title"></div>
+    <!-- 存放各级拆解后的子需求的大容器 -->
+    <div class="sub-requirements" id="sub-requirements"></div>
+
     <script>
-        const vscode = acquireVsCodeApi();
-
-        // document.getElementById('clickable-text').addEventListener('click', () => {
-        //     vscode.postMessage({
-        //         command: 'showAlert',
-        //         text: 'the clickable text'
-        //     });
-        // });
-
-        document.querySelectorAll('.editor-dialog').forEach(elm => {
-            elm.addEventListener('click', () => {
-                vscode.postMessage({
-                    command: 'openEditorDialog'
-                });
-            });
+        const axiosInstance = axios.create({
+            baseURL: 'http://localhost:5000',
+            timeout: 1000,
         });
+
+        async function submitRequirement() {
+            const input = document.getElementById('requirement-input').value;
+            const errorMessage = document.getElementById('error-message');
+            if (!input.trim()) {
+                errorMessage.textContent = '请输入需求';
+                return;
+            }
+            errorMessage.textContent = '';
+            
+            const requirementTitle = document.getElementById('requirement-title');
+            const subRequirements = document.getElementById('sub-requirements');
+            const inputContainer = document.getElementById('input-container');
+            // 隐藏输入框和提交按钮
+            inputContainer.style.display = 'none';
+            
+            // 设置主需求标题
+            requirementTitle.innerHTML = `<h1>${input}</h1>`;
+            // 清空之前的各级子需求
+            subRequirements.innerHTML = '';
+
+            // 主容器 插入 二级需求列容器
+            const _2LevelReqColumn = document.createElement('div');
+            _2LevelReqColumn.className = 'mid-level-req-column';
+            subRequirements.appendChild(_2LevelReqColumn);
+            // 二级需求列容器 插入 二级需求容器
+            const _2LevelReqContainer = document.createElement('div');
+            _2LevelReqContainer.className = 'mid-level-requirements';
+            _2LevelReqColumn.appendChild(_2LevelReqContainer);
+
+            // 二级需求容器 获取并插入 二级需求 TODO: 这里后续要对用户输入攻击做处理
+            const subReqs = await fetchSubRequirements(input.trim());
+            subReqs.forEach(req => addSubRequirement(_2LevelReqContainer, '2 级需求', req, 2));
+
+            // 二级需求列容器 插入 增加二级需求的按钮
+            addBtnForAddMidLevelReq(_2LevelReqColumn, _2LevelReqContainer, 2);
+        }
+
+        function addBtnForAddMidLevelReq(parentElement, targetElementForAddReq, level = 2) {
+            if (parentElement instanceof HTMLElement && targetElementForAddReq instanceof HTMLElement) {
+                const addMidLevelReqBtn = document.createElement('button');
+                addMidLevelReqBtn.textContent = `新增${level}级需求`;
+                addMidLevelReqBtn.className = 'add-mid-level-req-btn';
+                addMidLevelReqBtn.onclick = () => {
+                    addSubRequirement(targetElementForAddReq, `${level} 级需求`, `默认 ${level} 级需求`, level);
+                };
+                parentElement.appendChild(addMidLevelReqBtn);
+            } else {
+                console.error('parentElement is not a HTMLElement!!!');
+                console.error('targetElementForAddReq is not a HTMLElement!!!');
+            }
+        }
+
+        function addSubRequirement(parentElement, title = '2 级需求', subReq = '默认 2 级需求', level = 2) {
+            if (parentElement instanceof HTMLElement) {
+                const subRequirement = document.createElement('div');
+                subRequirement.className = 'sub-requirement';
+                subRequirement.innerHTML = `
+                    <h2>${title}</h2>
+                    <div class="content">
+                        <div class="description" contenteditable="false">${subReq}</div>
+                        <div class="buttons">
+                            <button onclick="editSubRequirement(this)">编辑</button>
+                            <button onclick="decomposeSubRequirement(this, ${level})">分解</button>
+                            <button onclick="deleteSubRequirement(this)">删除</button>
+                        </div>
+                    </div>
+                `;
+                parentElement.appendChild(subRequirement);
+            } else {
+                console.error('parentElement is not a HTMLElement!!!');
+            }
+        }
+
+        function editSubRequirement(button) {
+            const description = button.parentElement.previousElementSibling;
+            if (button.textContent === '编辑') {
+                button.textContent = '确定';
+                button.classList.add('pending-btn');
+                description.contentEditable = 'true';
+                description.focus();
+            } else {
+                button.textContent = '编辑';
+                button.classList.remove('pending-btn');
+                description.contentEditable = 'false';
+            }
+        }
+
+        async function decomposeSubRequirement(button, level) {
+            console.log('拆分的需求层级是：', level);
+            if (button instanceof HTMLButtonElement) {
+                // IMPORTANT 点击分解按钮，需求级别 +1
+                level += 1;
+                // 主容器
+                const subRequirements = document.getElementById('sub-requirements');
+                // 主容器 只插入一次 三级需求列容器，之后每次点击分解按钮，需要清空三级需求列容器
+                // let _3LevelReqColumn = subRequirements.querySelector(`#_3-level-req-column`);
+                const LEVEL_ID = `_${level}-level-req-column`;
+                let _3LevelReqColumn = subRequirements.querySelector('#' + LEVEL_ID);
+                if (!_3LevelReqColumn) {
+                    _3LevelReqColumn = document.createElement('div');
+                    _3LevelReqColumn.className = 'mid-level-req-column';
+                    _3LevelReqColumn.id = LEVEL_ID;
+                    subRequirements.appendChild(_3LevelReqColumn);
+                } else {
+                    _3LevelReqColumn.innerHTML = '';
+                }
+                // 三级需求列容器 插入 三级需求容器
+                const _3LevelReqContainer = document.createElement('div');
+                _3LevelReqContainer.className = 'mid-level-requirements';
+                _3LevelReqColumn.appendChild(_3LevelReqContainer);
+
+                // 三级需求容器 获取并插入 三级需求
+                const description = button.parentElement.previousElementSibling;
+                const moduleH1 = button.parentElement.parentElement.previousElementSibling;
+                const subReqs = await fetchLevelRequirements(
+                    description.textContent.trim(), 
+                    moduleH1.textContent.trim(),
+                    level
+                );
+                subReqs.forEach(req => addSubRequirement(_3LevelReqContainer, `${level} 级需求`, req, level));
+
+                // 三级需求列容器 插入 增加三级需求的按钮
+                addBtnForAddMidLevelReq(_3LevelReqColumn, _3LevelReqContainer, level);
+            }
+        }
+
+        function deleteSubRequirement(button) {
+            const subRequirement = button.parentElement.parentElement.parentElement;
+            subRequirement.remove();
+        }
+
+        // #region 向后端发送请求
+        async function fetchSubRequirements(requirement) {
+            const { data } = await axiosInstance.post("/depose-req-for-level-2", {
+                req: requirement
+            })
+            return data._2LevelReqs;
+
+            // // 模拟后端返回的数据
+            // return new Promise((resolve) => {
+            //     setTimeout(() => {
+            //         resolve([
+            //             `默认 2 级需求 111 for ${requirement}`,
+            //             `默认 2 级需求 222 for ${requirement}`,
+            //             `默认 2 级需求 333 for ${requirement}`
+            //         ]);
+            //     }, 500); // 模拟网络延迟
+            // });
+        }
+
+        async function fetchLevelRequirements(module, requirement, level) {
+            // 模拟后端返回的数据
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve([
+                        `默认 ${level} 级需求 111 for ${module}`,
+                        `默认 ${level} 级需求 222 for ${module}`,
+                        `默认 ${level} 级需求 333 for ${module}`
+                    ]);
+                }, 500); // 模拟网络延迟
+            });
+        }
+        // #endregion
     </script>
-    
 </body>
 </html>

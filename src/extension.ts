@@ -1,20 +1,23 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { sendFolderPathToBackend } from './service/communication/frontCommunication';
+import { startFlaskServer } from './server';
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "software-reuse-extension" is now active!');
 
     // 在显示 showSidebar Webview 前保存编辑器状态
     saveEditorState();
 
-    sendFolderPathToBackend();
+    // 开启 Flask 服务器，并获取其状态
+    const isServerRunning = await startFlaskServer(context);
 
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('myWebviewView', new MyWebviewViewProvider(context))
-    );
-
+    // IMPORTANT 在确保服务器开启之后再渲染侧边栏webview，允许前端访问
+    if (isServerRunning) {
+        context.subscriptions.push(
+            vscode.window.registerWebviewViewProvider('myWebviewView', new MyWebviewViewProvider(context))
+        );
+    }
     console.log('WebviewViewProvider 注册完毕');
 }
 
@@ -40,7 +43,11 @@ class MyWebviewViewProvider implements vscode.WebviewViewProvider {
         // 设置 Webview 的 HTML 内容
         const htmlFilePath = path.join(this._context.extensionPath, 'src/webviews/sidebar-requirement.html');
         const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
-        webviewView.webview.html = htmlContent;
+        // 设置 Webview 的 CSS 路径【将本地文件的相对路径转换为 Webview 可以访问的 VScode URI】
+        const cssFilePath = webviewView.webview.asWebviewUri(
+            vscode.Uri.joinPath(this._context.extensionUri, 'src', 'webviews', 'css', 'style-requirement.css')
+        );
+        webviewView.webview.html = htmlContent.replace('###CSS', cssFilePath.toString());
 
         // 记录当前打开的 code suggestion panel
         let activeInnerPanel: vscode.WebviewPanel | undefined;
