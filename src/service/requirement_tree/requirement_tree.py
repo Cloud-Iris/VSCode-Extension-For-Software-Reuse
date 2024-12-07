@@ -1,4 +1,7 @@
-import requirement_tree.requirement_tree_node as rtn
+import requirement_tree_node as rtn
+import requirement_tree_visitor as rtv
+import ollama
+import json
 
 class RequirementTree:
     def __init__(self, project_en_name: str='', project_ch_name: str='', project_description: str='', file_path: str=''):
@@ -126,3 +129,28 @@ class RequirementTree:
             parent_node.remove_child(leaf_node)
             parent_node.add_child(new_internal_node)
         self.current_node = new_internal_node
+
+    def to_dict(self):
+        """
+        把当前节点对应的子树转换成dict格式
+        """
+        to_dict_visitor = rtv.ConvertToDictVisitor()
+        return self.current_node.accept(to_dict_visitor)
+
+    def generate_dependencies(self):
+        prompt="""
+        You are a top-notch Python programmer. 
+        You are presented with a tree-structured requirement in the form of json, where the funtion of a node is composed of its child nodes.
+        You are responsible to identify the dependencies between the nodes of the tree and output them in the form of array json.
+        Output Example:
+        [(Frontend, Add), (Frontend, Subtract)]
+        which means Frontend Module is dependent on both Add and Subtract Module.
+
+        The given requirement tree is:
+        {tree}
+
+        Your output (only the json, no additional response):
+        """.format(tree=json.dumps(self.to_dict()))
+        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        print(res['message']['content'])
+        

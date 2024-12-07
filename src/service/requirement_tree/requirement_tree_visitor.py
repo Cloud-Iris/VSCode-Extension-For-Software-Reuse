@@ -130,5 +130,26 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
             node.code = extract_new_implementation_from_response(res['message']['content'])
 
 
+class ConvertToDictVisitor(RequirementTreeVisitorBase):
+    """
+    把一棵需求树转成dict格式
+    """
+    def visit_leaf(self, node: 'RequirementLeafNode'):
+        return {
+            'en_name': node.en_name,
+            'ch_name': node.ch_name,
+            'description': node.description
+        }
+    
+    def visit_internal(self, node):
+        children = []
+        for child in node.children:
+            children.append(child.accept(self))
+        return {
+            'en_name': node.en_name,
+            'ch_name': node.ch_name,
+            'description': node.description,
+            'children': children
+        }
 
 
