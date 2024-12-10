@@ -13,10 +13,10 @@ class RequirementTree:
         self.current_node = self.root
         self.file_node_map = {}
 
-    def get_current_node(self) -> rtn.RequirementTreeNode:
+    def get_current_node(self):
         return self.current_node
 
-    def add_child(self, child_en_name: str, child_ch_name, child_description: str, file_path: str) -> rtn.RequirementTreeNode:
+    def add_child(self, child_en_name: str, child_ch_name, child_description: str, file_path: str=''):
         """
         接口3.1: 给当前节点添加子节点
         @param file_path: 在插件里才能用到，目前直接传入空字符串
@@ -48,7 +48,7 @@ class RequirementTree:
         self.current_node=parent
         return return_value
     
-    def get_child_with_name(self, child_name: str) -> rtn.RequirementTreeNode:
+    def get_child_with_name(self, child_name: str):
         """
         获取当前节点名为 child_name 的子节点，不存在时返回 None
         """
@@ -57,7 +57,7 @@ class RequirementTree:
                 return child
         return None
 
-    def move_current_node(self, up: bool, child_name: str = None) -> rtn.RequirementTreeNode:
+    def move_current_node(self, up: bool, child_name: str = None):
         """
         接口4: 移动当前节点
         @param up: 为True时移动到父节点，child_name不需要传入；
@@ -112,7 +112,7 @@ class RequirementTree:
 
         return self.current_node.code
 
-    def convert_leaf_to_internal(self, leaf_node: rtn.RequirementLeafNode):
+    def convert_leaf_to_internal(self, leaf_node):
         """
         接口7: 将叶子结点转换为内部结点
         @param leaf_node: 要转换的叶子结点
@@ -141,10 +141,11 @@ class RequirementTree:
         prompt="""
         You are a top-notch Python programmer. 
         You are presented with a tree-structured requirement in the form of json, where the funtion of a node is composed of its child nodes.
-        You are responsible to identify the dependencies between the nodes of the tree and output them in the form of array json.
+        You are responsible to explore the functionalities and identify the dependencies between the nodes of the tree and output them in the form of array json.
         Output Example:
-        [(Frontend, Add), (Frontend, Subtract)]
+        [[Frontend, Add], [Frontend, Subtract]]
         which means Frontend Module is dependent on both Add and Subtract Module.
+        Only output the dependencies which cannot derive from the tree structure, i.e. non parent-child dependencies.
 
         The given requirement tree is:
         {tree}

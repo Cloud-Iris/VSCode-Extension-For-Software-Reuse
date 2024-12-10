@@ -37,21 +37,14 @@ def test_requirement_tree():
     tree = RequirementTree('Calculator', 'Implement a calculator, supporting add, subtract, multiply and divide.', '')
 
     # 接口3
-    add = tree.add_child('AddOperation', 'Implement the add operation of a calculator', '')
-    sub = tree.add_child('SubtractOperation', 'Implement the subtract operation of a calculator', '')
-    mul = tree.add_child('MultiplyOperation', 'Implement the multiply operation of a calculator', '')
-    div = tree.add_child('DivideOperation', 'Implement the divide operation of a calculator', '')
+    add = tree.add_child('AddOperation', '','Implement the add operation of a calculator')
+    sub = tree.add_child('SubtractOperation', '','Implement the subtract operation of a calculator')
+    mul = tree.add_child('MultiplyOperation', '','Implement the multiply operation of a calculator')
+    div = tree.add_child('DivideOperation', '','Implement the divide operation of a calculator')
+    front = tree.add_child('FrontEnd', '', 'Display GUI for all operations', '')
+    store = tree.add_child('History', '', 'Result history, support query and store', '')    
 
-    # 接口4
-    tree.move_current_node(False, 'AddOperation')
-    tree.construct_current_code()
-    tree.move_current_node(True)
-    tree.move_current_node(False, 'SubtractOperation')
-    # 接口5
-    tree.modify_current_node(new_description='This is a new description, Implement the subtract operation of a calculator')
-    # 接口6
-    tree.construct_current_code()
-    print(tree.current_node)
+    tree.generate_dependencies()
 
 
 if __name__ == '__main__':
