@@ -1,5 +1,5 @@
-import requirement_tree_node as rtn
-import requirement_tree_visitor as rtv
+from . import requirement_tree_node as rtn
+from . import requirement_tree_visitor as rtv
 import ollama
 import json
 
@@ -154,4 +154,3 @@ class RequirementTree:
         """.format(tree=json.dumps(self.to_dict()))
         res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         print(res['message']['content'])
-        
