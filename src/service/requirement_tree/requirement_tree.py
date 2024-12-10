@@ -1,10 +1,11 @@
 import sys, os
 sys.path.append(os.path.dirname(__file__))
-
 import requirement_tree_node as rtn
 import requirement_tree_visitor as rtv
 import ollama
 import json
+sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
+from get_config import read_config
 
 class RequirementTree:
     def __init__(self, project_en_name: str='', project_ch_name: str='', project_description: str='', file_path: str=''):
@@ -155,5 +156,20 @@ class RequirementTree:
 
         Your output (only the json, no additional response):
         """.format(tree=json.dumps(self.to_dict()))
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        if read_config("language")=="Chinese":
+            prompt="""
+            你是一位顶尖的Python程序员。
+            你被赋予了一个树形结构的需求，其中每个节点的功能由其子节点组成。
+            你的任务是探索功能并识别树的节点之间的依赖关系，并以数组json的形式输出。
+            输出示例：
+            [[前端，加法]，[后端，减法]]
+            这意味着前端模块依赖于加法和减法模块。
+            只输出不能从树结构推导出的依赖关系，即非父子依赖关系。
+
+            给定的需求树是：
+            {tree}
+
+            你的输出（只有json，没有额外的回复）
+            """.format(tree=json.dumps(self.to_dict()))
+        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         print(res['message']['content'])

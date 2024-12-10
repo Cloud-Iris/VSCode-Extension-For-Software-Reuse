@@ -1,4 +1,4 @@
 model:
-  /data/data_public/dtw_data/modelscop_hub/hub/Qwen/Qwen2___5-Coder-7B
+  qwen2.5-coder:7b
 language:
   Chinese
