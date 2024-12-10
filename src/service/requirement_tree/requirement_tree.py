@@ -1,5 +1,8 @@
-from . import requirement_tree_node as rtn
-from . import requirement_tree_visitor as rtv
+import sys, os
+sys.path.append(os.path.dirname(__file__))
+
+import requirement_tree_node as rtn
+import requirement_tree_visitor as rtv
 import ollama
 import json
 

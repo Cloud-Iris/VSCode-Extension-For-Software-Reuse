@@ -1,5 +1,7 @@
 import uuid
-from . import requirement_tree_visitor as rtv
+import sys, os
+sys.path.append(os.path.dirname(__file__))
+import requirement_tree_visitor as rtv
 import ollama
 
 # 假设需求树上的每个节点都对应一个类，每个内部节点需要调用子节点的接口、生成额外的代码来组合子节点的功能。
