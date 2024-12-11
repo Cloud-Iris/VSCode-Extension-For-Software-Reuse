@@ -9,6 +9,9 @@ import threading
 from difflib import SequenceMatcher
 import time
 import jieba.posseg as pseg
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
+from get_config import read_config
 
 class RequirementManager:
     def __init__(self, filepath):
@@ -33,7 +36,7 @@ class RequirementManager:
             需求：{requirement}
             分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
             """.format(requirement=s, node_names=str_node_names)
-            res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+            res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
             classification = res['message']['content'].lower()
             print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
             res = input().strip().lower()
@@ -63,7 +66,7 @@ class RequirementManager:
         """
         input = "The requirement that you should decompose is:\n" + input.strip()
         res = ollama.chat(
-            model="qwen2.5-coder:7b", 
+            model=read_config("model"), 
             stream=False, 
             messages=[{"role": "user", "content": role + input + one_shot}], 
             options={"temperature": 0},
@@ -193,7 +196,7 @@ class RequirementManager:
 
         {init_tree_example}
         """.format(requirement=requirement, init_tree_example=init_tree_example)
-        res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         description = res['message']['content'].strip()
         lines = description.split('\n')
 
@@ -293,7 +296,7 @@ class RequirementManager:
                 )
             print("prompt: ", prompt)
 
-            res = ollama.chat(model="qwen2.5-coder:7b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+            res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
             selected_node_name = res['message']['content'].strip()
 
             print(f"=====================\n筛选前：{selected_node_name}\n=====================")
