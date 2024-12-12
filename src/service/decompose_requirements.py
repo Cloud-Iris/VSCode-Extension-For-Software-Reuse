@@ -385,6 +385,11 @@ class RequirementManager:
         # {location_node_example}
         # """.format(requirement=s, node_names=", ".join(self.node_names), location_node_example=location_node_example)
 
+        # add locating with rules
+        for node_name in self.node_names:
+            if node_name in s:
+                return self.dfs_search_node_name(self.tree.root, node_name)
+
         selected_node_name=""
 
         while selected_node_name not in self.node_names and selected_node_name != "None":
