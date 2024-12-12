@@ -65,10 +65,22 @@ class RequirementManager:
         Decompose the requirements into a list of requirements.
         """
         input = "The requirement that you should decompose is:\n" + input.strip()
+        if read_config("language") == "Chinese":
+            input = input.strip()+"，有哪些功能\n"
+
+        # 不对用户输入做过多处理，直接让大模型处理
+        init_res=ollama.chat(
+            model=read_config("model"), 
+            stream=False, 
+            messages=[{"role": "user", "content": input}], 
+            options={"temperature": 0},
+        )
+        print("init_res: ", init_res["message"]["content"])
+
         res = ollama.chat(
             model=read_config("model"), 
             stream=False, 
-            messages=[{"role": "user", "content": role + input + one_shot}], 
+            messages=[{"role": "user", "content": role + input + one_shot + "\n请参考下面的功能分解" + init_res["message"]["content"]}], 
             options={"temperature": 0},
         )
         content = res['message']['content']

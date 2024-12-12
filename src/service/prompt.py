@@ -73,7 +73,7 @@ The folling is an example of the input and output:
 
 ####################################
 Inference:
-用户想要对 A 进行功能拆解, 我认为 A 需要具有 B, C, D, E 等功能，所以返回B, C, D, E
+用户想要对 A 进行功能拆解, 我认为 A 需要具有 B, C功能，所以返回B, C
 ####################################
 Output:
 [
@@ -85,16 +85,6 @@ Output:
     {
         "chName": "中文名",
         "enName": "C Operation",
-        "description": "实现xxx功能"
-    },
-    {
-        "chName": "中文名",
-        "enName": "D Operation",
-        "description": "实现xxx功能"
-    },
-    {
-        "chName": "中文名",
-        "enName": "E Operation",
         "description": "实现xxx功能"
     }
 ]
