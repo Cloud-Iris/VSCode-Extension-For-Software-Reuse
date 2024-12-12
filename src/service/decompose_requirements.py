@@ -25,20 +25,29 @@ class RequirementManager:
         将用户输入的需求分类
         """
 
+        # 先用规则识别一层
+        act_list = ["添加", "删除", "拆解", "修改", "生成代码", "展示信息"]
+        for act in act_list:
+            if act in s:
+                return act
+
         str_node_names=",".join(self.node_names)
 
         res="n"
         classification=""
 
         while res not in ["y", ""]:
-            prompt = """
-            你是语言专家。
-            请识别用户意图：添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
+            prompt = """你是语言专家。
+            将用户需求分类到以下类别之一：添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
             需求：{requirement}
             分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
             """.format(requirement=s, node_names=str_node_names)
             res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
             classification = res['message']['content'].lower()
+            if classification not in ["添加", "删除", "拆解", "修改", "生成代码", "展示信息"]:
+                s = self.Rhetorical(s)
+                res = "n"
+                continue
             print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
             res = input().strip().lower()
             if res == "n":
@@ -222,6 +231,18 @@ class RequirementManager:
                 detailed_description = "\n".join(lines[i+1:]).strip()
                 break
         return en_name, ch_name, detailed_description
+
+    def Rhetorical(self, s):
+        # 生成对话提示
+        prompt = f"用户的问题是：{s}\n请进一步精细化需求，并可以给用户提问。"
+
+        # 调用大模型生成响应
+        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+
+        # 提取生成的文本
+        refined_requirements = res['message']['content'].lower()
+
+        return refined_requirements
 
     def display_node(self, s, node):
         """
@@ -643,9 +664,9 @@ class RequirementManager:
         with open(log_filename, "r") as f:
             history = f.read()
         
-        prompt="你需要模拟一个想要实现学生管理系统的用户，你每次只能提一个具体需求。\
+        prompt="你需要模拟一个想要实现学生管理系统的用户，请提出一个具体的添加需求。\
             下面是你的对话历史: {history}。\
-            例子输出：我想要增加注册功能\
+            例子输出：我想要添加注册功能\
         ".format(history=history)
 
         res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})

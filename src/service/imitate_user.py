@@ -15,20 +15,20 @@ if __name__ == "__main__":
     with open(log_filename, "w") as f:
         f.write("")  # 创建一个空文件
 
-    # Redirect print output to log file
-    class Logger(object):
-        def __init__(self, filename):
-            self.terminal = sys.stdout
-            self.log = open(filename, "a")
+    # # Redirect print output to log file
+    # class Logger(object):
+    #     def __init__(self, filename):
+    #         self.terminal = sys.stdout
+    #         self.log = open(filename, "a")
 
-        def write(self, message):
-            self.terminal.write(message)
-            self.log.write(message)
+    #     def write(self, message):
+    #         self.terminal.write(message)
+    #         self.log.write(message)
 
-        def flush(self):
-            pass
+    #     def flush(self):
+    #         pass
 
-    sys.stdout = Logger(log_filename)
+    # sys.stdout = Logger(log_filename)
 
     # print(RequirementManager.agent_imitate_user())
 
