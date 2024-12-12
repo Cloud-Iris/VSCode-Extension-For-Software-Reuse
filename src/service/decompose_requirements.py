@@ -26,10 +26,18 @@ class RequirementManager:
         """
 
         # 先用规则识别一层
-        act_list = ["添加", "删除", "拆解", "修改", "生成代码", "展示信息"]
-        for act in act_list:
+        act_list = {
+            "添加": "添加",
+            "实现": "添加",
+            "删除": "删除",
+            "拆解": "拆解",
+            "修改": "修改",
+            "生成代码": "生成代码",
+            "展示信息": "展示信息"
+        }
+        for act in act_list.keys():
             if act in s:
-                return act
+                return act_list[act]
 
         str_node_names=",".join(self.node_names)
 
@@ -38,25 +46,27 @@ class RequirementManager:
 
         while res not in ["y", ""]:
             prompt = """你是语言专家。
-            将用户需求分类到以下类别之一：添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
+            将用户需求分类到以下类别之一：实现、添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
             需求：{requirement}
             分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
             """.format(requirement=s, node_names=str_node_names)
             res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
             classification = res['message']['content'].lower()
-            if classification not in ["添加", "删除", "拆解", "修改", "生成代码", "展示信息"]:
+            if classification not in act_list.keys():
                 s = self.Rhetorical(s)
                 res = "n"
                 continue
             print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
             res = input().strip().lower()
             if res == "n":
-                print("意图识别失败，请尝试在操作中加入如下关键词：添加、删除、拆解、修改、生成代码、展示信息。")
+                print("意图识别失败，请尝试在操作中加入如下关键词：实现、添加、删除、拆解、修改、生成代码、展示信息。")
                 s= input().strip().lower()
                 self.tree.current_node = self.location_node(s)
 
         if "修改" in classification:
             return "修改"
+        if "实现" in classification:
+            return "添加"
         elif "添加" in classification:
             return "添加"
         elif "删除" in classification:
@@ -664,7 +674,7 @@ class RequirementManager:
         with open(log_filename, "r") as f:
             history = f.read()
         
-        prompt="你需要模拟一个想要实现学生管理系统的用户，请提出一个具体的添加需求。\
+        prompt="你需要模拟一个想要实现学生管理系统的用户，请提出一个具体的需求。\
             下面是你的对话历史: {history}。\
             例子输出：我想要添加注册功能\
         ".format(history=history)
