@@ -1,8 +1,12 @@
-import time, os
+import time, re
 from watchdog.events import FileSystemEventHandler
 import json
 from requirement_tree.requirement_tree import RequirementTree
 from requirement_tree.requirement_tree_node import RequirementInternalNode
+import ollama
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
+from get_config import read_config
 
 class FileChangeHandler(FileSystemEventHandler):
     """
@@ -156,3 +160,60 @@ def load_tree_from_json(path):
         tree = RequirementTree(tree_dict["en_name"], tree_dict["ch_name"], tree_dict["description"], tree_dict["file_path"])
         tree.root = dict_to_node(tree_dict)
         return tree
+
+
+def extract_imports_from_file(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+    imports = re.findall(r'^\s*(?:from\s+(\S+)\s+import\s+\S+|import\s+(\S+))', content, re.MULTILINE)
+    return [imp[0] or imp[1] for imp in imports]
+
+def extract_imports_from_directory(directory):
+    all_imports = set()
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if file.endswith('.py'):
+                file_path = os.path.join(root, file)
+                imports = extract_imports_from_file(file_path)
+                all_imports.update(imports)
+    return list(all_imports)
+
+def create_requirements_txt(tree, root_en_name):
+    """
+    递归创建requirements.txt文件
+    @param root_en_name: 根节点的英文名
+    @param tree: 树结构
+    """
+    def create_requirements_txt_rec(node, file):
+        """
+        递归创建requirements.txt文件
+        @param node: 当前节点
+        @param file: 文件对象
+        """
+        # 写入当前节点的依赖
+        if node.file_path:
+            module_path = node.file_path[node.file_path.index(root_en_name)+len(root_en_name)+1:node.file_path.rindex('.')]
+            file.write(f"{module_path}\n")
+
+        # 递归处理子节点
+        for child in node.children:
+            create_requirements_txt_rec(child, file)
+
+    # 提取所有 .py 文件的 import 语句
+    imports = extract_imports_from_directory(root_en_name)
+    prompt = f"以下是项目中的所有 import 语句：\n{json.dumps(imports, ensure_ascii=False, indent=4)}\n请生成 requirements.txt 的内容。"
+
+    # 调用大模型生成响应
+    res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+    requirements_content = res['message']['content'].strip()
+    pattern = re.compile(r"```(.*?)```", re.DOTALL)
+    matches = pattern.findall(requirements_content)
+    if not matches:
+        # 创建requirements.txt文件
+        file_path = os.path.join(root_en_name, "requirements.txt")
+        with open(file_path, 'w') as file:
+            file.write(requirements_content)
+        return 
+    file_path = os.path.join(root_en_name, "requirements.txt")
+    with open(file_path, 'w') as file:
+        file.write(matches[0].strip())

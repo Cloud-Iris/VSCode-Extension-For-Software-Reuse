@@ -59,7 +59,7 @@ class RequirementManager:
             print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
             res = input().strip().lower()
             if res == "n":
-                print("意图识别失败，请尝试在操作中加入如下关键词：实现、添加、删除、拆解、修改、生成代码、展示信息。")
+                print("意图识别失败，请重新输入。")
                 s= input().strip().lower()
                 self.tree.current_node = self.location_node(s)
 
@@ -234,7 +234,7 @@ class RequirementManager:
         for child in children:
             if child["chName"] in self.node_names:
                 continue
-            self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
+            self.tree.add_child(child['enName'].replace(" ","").replace("-","").replace("_",""), child['chName'], child['description'], '')
 
     def modify_by_user(self):
         # 显示当前节点信息并询问用户需要修改成什么
@@ -302,7 +302,7 @@ class RequirementManager:
 
         for i in range(len(lines)):
             if "en_name" in lines[i]:
-                en_name = re.sub(r'[^a-zA-Z]', '', lines[i].split(":")[1].strip().replace(" ","_"))
+                en_name = re.sub(r'[^a-zA-Z]', '', lines[i].split(":")[1].strip().replace(" ","").replace("-","").replace("_",""))
             elif "ch_name" in lines[i]:
                 ch_name = lines[i].split(":")[1].strip()
             elif "description" in lines[i]:
@@ -521,6 +521,7 @@ class RequirementManager:
                 # 创建文件夹和文件
                 create_directory_and_files(self.tree.root.en_name, self.tree.file_node_map,self.tree.current_node, self.filepath, [])
                 save_tree_to_json(self.tree, self.tree.root.en_name+"/restore.json")
+                create_requirements_txt(self.tree, self.tree.root.en_name)
                 self.start_watching()
                 print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
             
@@ -593,13 +594,7 @@ class RequirementManager:
                 self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
 
                 # 分解需求
-                children = self.decompose_requirements(self.tree.current_node.ch_name)
-                children = json.loads(children)
-                # 添加子节点
-                for child in children:
-                    if child["chName"] in self.node_names:
-                        continue
-                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
+                self.decompose_node()
 
                 # 显示当前树结构
                 self.display_tree()
@@ -657,13 +652,7 @@ class RequirementManager:
                 # 将当前节点转换为内部节点
                 self.tree.convert_leaf_to_internal(self.tree.current_node)
                 # 分解需求
-                children = self.decompose_requirements(s)
-                children = json.loads(children)
-                # 添加子节点
-                for child in children:
-                    if child["chName"] in self.node_names:
-                        continue
-                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
+                self.decompose_node()
 
                 # 显示当前树结构
                 self.display_tree()
