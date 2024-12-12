@@ -92,7 +92,7 @@ class RequirementManager:
         init_res=ollama.chat(
             model=read_config("model"), 
             stream=False, 
-            messages=[{"role": "user", "content": input}], 
+            messages=[{"role": "user", "content": self.tree.root.ch_name+"中，"+input}], 
             options={"temperature": 0},
         )
         # print("init_res: ", init_res["message"]["content"])
@@ -104,7 +104,7 @@ class RequirementManager:
             options={"temperature": 0},
         )
         content = res['message']['content']
-        print("content: ", content)
+        # print("content: ", content)
         pattern = r'\[([^\]]*)\]'
         matches = re.findall(pattern, content)
         s = "["
@@ -142,7 +142,15 @@ class RequirementManager:
                     return result
         return None
 
-    def display_tree(self, node, depth=0, display=True):
+    def display_tree(self):
+        """
+        显示树的结构
+        """
+        print("\n=====================\n当前树结构如下：\n=====================")
+        self.node_names = self.display_tree_dfs(self.tree.root)
+        print("=====================")
+
+    def display_tree_dfs(self, node, depth=0, display=True):
         """
         按照节点的深度输出树状结构
         @param node: 当前节点
@@ -154,7 +162,7 @@ class RequirementManager:
             print("\t" * depth + node.ch_name)
         if hasattr(node, 'children') and node.children:
             for child in node.children:
-                node_name.extend(self.display_tree(child, depth + 1, display))
+                node_name.extend(self.display_tree_dfs(child, depth + 1, display))
         return node_name
 
     def init_tree(self) -> str:
@@ -175,7 +183,7 @@ class RequirementManager:
                         self.flag = False
                         self.tree = load_tree_from_json(restore_path)
                         print("\n根目录系统加载完毕！")
-                        self.node_names = self.display_tree(self.tree.root)
+                        self.node_names = self.display_tree_dfs(self.tree.root)
 
                         # 询问用户是否有进一步的需求
                         print("\n请问您有什么进一步的需求？输入q/quit/exit/no退出系统。")
@@ -187,7 +195,7 @@ class RequirementManager:
                             if self.tree.current_node is None:
                                 # 显示当前树结构
                                 print("\n=====================\n当前树结构如下：\n=====================")
-                                self.node_names = self.display_tree(self.tree.root)
+                                self.node_names = self.display_tree_dfs(self.tree.root)
                                 print("=====================")
                                 print("\n对不起，我无法理解您的需求，请详细描述您的需求，或者输入q/quit/exit/no退出系统。")
                                 s = input().strip()
@@ -212,9 +220,21 @@ class RequirementManager:
         # 生成根节点
         self.tree = RequirementTree(en_name, ch_name, detailed_description, '')
         self.tree.current_node = self.tree.root
-        self.node_names = self.display_tree(self.tree.root, 0, False)
+        self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
 
         return s, "拆解"
+
+    def decompose_node(self):
+        for child in self.tree.current_node.children:
+            self.tree.current_node.remove_child(child.ch_name)
+        # 分解需求
+        children = self.decompose_requirements(self.tree.current_node.ch_name)
+        children = json.loads(children)
+        # 添加子节点
+        for child in children:
+            if child["chName"] in self.node_names:
+                continue
+            self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
 
     def modify_by_user(self):
         # 显示当前节点信息并询问用户需要修改成什么
@@ -227,9 +247,7 @@ class RequirementManager:
         self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
         
         # 显示当前树结构
-        print("\n=====================\n当前树结构如下：\n=====================")
-        self.node_names = self.display_tree(self.tree.root)
-        print("=====================")
+        self.display_tree()
 
     def modify_by_agent(self, s):
         current_info = {
@@ -260,13 +278,11 @@ class RequirementManager:
         new_file_path = updated_info.get("file_path", self.tree.current_node.file_path)
         self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
 
-        # 显示当前节点信息并生成提示
-        self.display_node("修改后的节点信息如下所示", self.tree.current_node)
+        # 拆解修改后的需求
+        self.decompose_node()
         
         # 显示当前树结构
-        print("\n=====================\n当前树结构如下：\n=====================")
-        self.node_names = self.display_tree(self.tree.root)
-        print("=====================")
+        self.display_tree()
 
     def generate_node(self, requirement):
         prompt = """
@@ -390,12 +406,12 @@ class RequirementManager:
 下面是一个输出示例：**一个词**""".format(
                     requirement=s, node_names=", ".join(self.node_names), selected_node_name=selected_node_name, location_node_example=location_node_example
                 )
-            print("prompt: ", prompt)
+            # print("prompt: ", prompt)
 
             res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
             selected_node_name = res['message']['content'].strip()
 
-            print(f"=====================\n筛选前：{selected_node_name}\n=====================")
+            # print(f"=====================\n筛选前：{selected_node_name}\n=====================")
 
             # 定位字符串中return的位置，只要return后面的内容
             if "return" in selected_node_name:
@@ -451,24 +467,18 @@ class RequirementManager:
                
                 # 将当前节点转换为内部节点
                 self.tree.convert_leaf_to_internal(self.tree.current_node)
-                print("current_node: ", self.tree.current_node.ch_name)
+                # print("current_node: ", self.tree.current_node.ch_name)
                 # 先generate一个current_node的叶子节点，再拆解这个叶子节点
                 en_name, ch_name, detailed_description= self.generate_node(s)
                 self.tree.add_child(en_name, ch_name, detailed_description, '')
                 self.tree.current_node = self.tree.current_node.children[-1]
-                self.node_names = self.display_tree(self.tree.root, 0, False)
+                self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
 
                 # 分解需求
-                children = self.decompose_requirements(self.tree.current_node.ch_name)
-                children = json.loads(children)
-                # 添加子节点
-                for child in children:
-                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
+                self.decompose_node()
 
                 # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                self.display_tree()
             
             elif classify.startswith("删除"):
                 not_delete = [self.tree.root.ch_name]
@@ -482,7 +492,7 @@ class RequirementManager:
                         not_delete.append(self.tree.current_node.ch_name)
                     # print(not_delete)
                     # 更新树结构并显示
-                    self.node_names = self.display_tree(self.tree.root, 0, False)
+                    self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
                     # 从self.node_names中删除not_delete
                     for node_name in not_delete:
                         if node_name in self.node_names:
@@ -491,9 +501,7 @@ class RequirementManager:
                     self.tree.current_node = self.location_node(s, "delete")
                 
                 # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                self.display_tree()
                 self.tree.current_node = self.tree.root
             
             elif classify.startswith("修改"):
@@ -524,23 +532,16 @@ class RequirementManager:
                 
                 # 将当前节点转换为内部节点
                 self.tree.convert_leaf_to_internal(self.tree.current_node)
+
                 # 分解需求
-                children = self.decompose_requirements(s)
-                children = json.loads(children)
-                # 添加子节点
-                for child in children:
-                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
+                self.decompose_node()
 
                 # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                self.display_tree()
 
             else:
                 # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                self.display_tree()
                 print("对不起，我无法理解您的需求，请基于树结构详细描述您的需求。")
             
             # 询问用户是否有进一步的需求
@@ -557,7 +558,7 @@ class RequirementManager:
                 if self.tree.current_node is None:
                     # 显示当前树结构
                     print("\n=====================\n当前树结构如下：\n=====================")
-                    self.node_names = self.display_tree(self.tree.root)
+                    self.node_names = self.display_tree_dfs(self.tree.root)
                     print("=====================")
                     print("\n对不起，我无法理解您的需求，您可以在输入中指明关键词：增删改查拆分，或者输入q/quit/exit/no退出系统。")
                     s = input().strip()
@@ -584,7 +585,7 @@ class RequirementManager:
                 en_name, ch_name, detailed_description= self.generate_node(s)
                 self.tree.add_child(en_name, ch_name, detailed_description, '')
                 self.tree.current_node = self.tree.current_node.children[-1]
-                self.node_names = self.display_tree(self.tree.root, 0, False)
+                self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
 
                 # 分解需求
                 children = self.decompose_requirements(self.tree.current_node.ch_name)
@@ -596,9 +597,7 @@ class RequirementManager:
                     self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
 
                 # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                self.display_tree()
             
             elif classify.startswith("删除"):
                 not_delete = [self.tree.root.ch_name]
@@ -613,7 +612,7 @@ class RequirementManager:
                         not_delete.append(self.tree.current_node.ch_name)
                     # print(not_delete)
                     # 更新树结构并显示
-                    self.node_names = self.display_tree(self.tree.root, 0, False)
+                    self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
                     # 从self.node_names中删除not_delete
                     for node_name in not_delete:
                         if node_name in self.node_names:
@@ -622,9 +621,7 @@ class RequirementManager:
                     self.tree.current_node = self.location_node(s, "delete")
                 
                 # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                self.display_tree()
                 self.tree.current_node = self.tree.root
             
             elif classify.startswith("修改"):
@@ -664,15 +661,11 @@ class RequirementManager:
                     self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
 
                 # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                self.display_tree()
 
             else:
                 # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                self.display_tree()
                 print("对不起，我无法理解您的需求，请基于树结构详细描述您的需求。")
             
             # 询问用户是否有进一步的需求
@@ -690,7 +683,7 @@ class RequirementManager:
                 if self.tree.current_node is None:
                     # 显示当前树结构
                     print("\n=====================\n当前树结构如下：\n=====================")
-                    self.node_names = self.display_tree(self.tree.root)
+                    self.node_names = self.display_tree_dfs(self.tree.root)
                     print("=====================")
                     print("\n对不起，我无法理解您的需求，您可以在输入中指明关键词：增删改查拆分，或者输入q/quit/exit/no退出系统。")
                     s = self.agent_imitate_user()
