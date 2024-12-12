@@ -216,6 +216,58 @@ class RequirementManager:
 
         return s, "拆解"
 
+    def modify_by_user(self):
+        # 显示当前节点信息并询问用户需要修改成什么
+        self.display_node("您想要修改的节点信息如下所示", self.tree.current_node)
+        new_en_name = input(f"请输入新的英文名称，回车保留当前数据： {self.tree.current_node.en_name} ").strip() or self.tree.current_node.en_name
+        new_ch_name = input(f"请输入新的中文名称，回车保留当前数据: {self.tree.current_node.ch_name} ").strip() or self.tree.current_node.ch_name
+        new_description = input(f"请输入新的描述，回车保留当前数据: {self.tree.current_node.description} ").strip() or self.tree.current_node.description
+        new_code = input(f"请输入新的代码，回车保留当前数据: {self.tree.current_node.code} ").strip() or self.tree.current_node.code
+        new_file_path = input(f"请输入新的文件路径，回车保留当前数据: {self.tree.current_node.file_path} ").strip() or self.tree.current_node.file_path
+        self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
+        
+        # 显示当前树结构
+        print("\n=====================\n当前树结构如下：\n=====================")
+        self.node_names = self.display_tree(self.tree.root)
+        print("=====================")
+
+    def modify_by_agent(self, s):
+        current_info = {
+            "en_name": self.tree.current_node.en_name,
+            "ch_name": self.tree.current_node.ch_name,
+            "description": self.tree.current_node.description,
+            "code": self.tree.current_node.code,
+            "file_path": self.tree.current_node.file_path
+        }
+        prompt = f"当前节点信息如下：\n{json.dumps(current_info, ensure_ascii=False, indent=4)}\n\n用户输入：{s}\n请基于用户输入更新节点信息，并以JSON格式输出。"
+
+        while True:
+            # 调用大模型生成响应
+            res = ollama.chat(format="json" ,model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+
+            # 提取生成的文本并解析为JSON
+            try:
+                updated_info = json.loads(res['message']['content'].strip())
+                break
+            except Exception as e:
+                pass
+
+        # 更新节点信息
+        new_en_name = updated_info.get("en_name", self.tree.current_node.en_name)
+        new_ch_name = updated_info.get("ch_name", self.tree.current_node.ch_name)
+        new_description = updated_info.get("description", self.tree.current_node.description)
+        new_code = updated_info.get("code", self.tree.current_node.code)
+        new_file_path = updated_info.get("file_path", self.tree.current_node.file_path)
+        self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
+
+        # 显示当前节点信息并生成提示
+        self.display_node("修改后的节点信息如下所示", self.tree.current_node)
+        
+        # 显示当前树结构
+        print("\n=====================\n当前树结构如下：\n=====================")
+        self.node_names = self.display_tree(self.tree.root)
+        print("=====================")
+
     def generate_node(self, requirement):
         prompt = """
         You are a top-notch description expert. 
@@ -445,19 +497,8 @@ class RequirementManager:
                 self.tree.current_node = self.tree.root
             
             elif classify.startswith("修改"):
-                # 显示当前节点信息并询问用户需要修改成什么
-                self.display_node("您想要修改的节点信息如下所示", self.tree.current_node)
-                new_en_name = input(f"请输入新的英文名称，回车保留当前数据： {self.tree.current_node.en_name} ").strip() or self.tree.current_node.en_name
-                new_ch_name = input(f"请输入新的中文名称，回车保留当前数据: {self.tree.current_node.ch_name} ").strip() or self.tree.current_node.ch_name
-                new_description = input(f"请输入新的描述，回车保留当前数据: {self.tree.current_node.description} ").strip() or self.tree.current_node.description
-                new_code = input(f"请输入新的代码，回车保留当前数据: {self.tree.current_node.code} ").strip() or self.tree.current_node.code
-                new_file_path = input(f"请输入新的文件路径，回车保留当前数据: {self.tree.current_node.file_path} ").strip() or self.tree.current_node.file_path
-                self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
-                
-                # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                # self.modify_by_user()
+                self.modify_by_agent(s)
             
             elif classify.startswith("生成代码"):
                 # 生成当前节点的代码
@@ -550,6 +591,8 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
+                    if child["chName"] in self.node_names:
+                        continue
                     self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
 
                 # 显示当前树结构
@@ -585,19 +628,7 @@ class RequirementManager:
                 self.tree.current_node = self.tree.root
             
             elif classify.startswith("修改"):
-                # 显示当前节点信息并询问用户需要修改成什么
-                self.display_node("您想要修改的节点信息如下所示", self.tree.current_node)
-                new_en_name = input(f"请输入新的英文名称，回车保留当前数据： {self.tree.current_node.en_name} ").strip() or self.tree.current_node.en_name
-                new_ch_name = input(f"请输入新的中文名称，回车保留当前数据: {self.tree.current_node.ch_name} ").strip() or self.tree.current_node.ch_name
-                new_description = input(f"请输入新的描述，回车保留当前数据: {self.tree.current_node.description} ").strip() or self.tree.current_node.description
-                new_code = input(f"请输入新的代码，回车保留当前数据: {self.tree.current_node.code} ").strip() or self.tree.current_node.code
-                new_file_path = input(f"请输入新的文件路径，回车保留当前数据: {self.tree.current_node.file_path} ").strip() or self.tree.current_node.file_path
-                self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
-                
-                # 显示当前树结构
-                print("\n=====================\n当前树结构如下：\n=====================")
-                self.node_names = self.display_tree(self.tree.root)
-                print("=====================")
+                self.modify_by_user()
             
             elif classify.startswith("生成代码"):
                 # 生成当前节点的代码
@@ -628,6 +659,8 @@ class RequirementManager:
                 children = json.loads(children)
                 # 添加子节点
                 for child in children:
+                    if child["chName"] in self.node_names:
+                        continue
                     self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
 
                 # 显示当前树结构
