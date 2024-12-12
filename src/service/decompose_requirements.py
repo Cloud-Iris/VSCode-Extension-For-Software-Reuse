@@ -9,6 +9,7 @@ import threading
 from difflib import SequenceMatcher
 import time
 import jieba.posseg as pseg
+from datetime import datetime
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
 from get_config import read_config
@@ -32,7 +33,7 @@ class RequirementManager:
         while res not in ["y", ""]:
             prompt = """
             你是语言专家。
-            将以下需求分类到以下类别之一：添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
+            请识别用户意图：添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
             需求：{requirement}
             分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
             """.format(requirement=s, node_names=str_node_names)
@@ -41,7 +42,7 @@ class RequirementManager:
             print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
             res = input().strip().lower()
             if res == "n":
-                print("意图识别失败，请在操作中加入如下关键词：添加、删除、拆解、修改、生成代码、展示信息。")
+                print("意图识别失败，请尝试在操作中加入如下关键词：添加、删除、拆解、修改、生成代码、展示信息。")
                 s= input().strip().lower()
                 self.tree.current_node = self.location_node(s)
 
@@ -75,7 +76,7 @@ class RequirementManager:
             messages=[{"role": "user", "content": input}], 
             options={"temperature": 0},
         )
-        print("init_res: ", init_res["message"]["content"])
+        # print("init_res: ", init_res["message"]["content"])
 
         res = ollama.chat(
             model=read_config("model"), 
@@ -490,3 +491,167 @@ class RequirementManager:
                     s = input().strip()
                 else:
                     break
+
+    def agent_interaction(self):
+        """
+        用户交互函数，用于处理用户输入的需求并对需求树进行相应的操作。
+        """
+        # 初始化根节点
+        s, classify = self.init_tree()
+        s = self.agent_imitate_user()
+        
+        while s.lower() not in ["no", "q", "quit", "exit"]:
+            
+            if classify.startswith("添加"):
+                # print("\n=====================\n正在执行\n=====================")
+               
+                # 将当前节点转换为内部节点
+                self.tree.convert_leaf_to_internal(self.tree.current_node)
+                print("current_node: ", self.tree.current_node.ch_name)
+                # 先generate一个current_node的叶子节点，再拆解这个叶子节点
+                en_name, ch_name, detailed_description= self.generate_node(s)
+                self.tree.add_child(en_name, ch_name, detailed_description, '')
+                self.tree.current_node = self.tree.current_node.children[-1]
+                self.node_names = self.display_tree(self.tree.root, 0, False)
+
+                # 分解需求
+                children = self.decompose_requirements(self.tree.current_node.ch_name)
+                children = json.loads(children)
+                # 添加子节点
+                for child in children:
+                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
+
+                # 显示当前树结构
+                print("\n=====================\n当前树结构如下：\n=====================")
+                self.node_names = self.display_tree(self.tree.root)
+                print("=====================")
+            
+            elif classify.startswith("删除"):
+                not_delete = [self.tree.root.ch_name]
+                # 循环删除节点，直到用户确认删除
+                while self.tree.current_node is not None:
+                    self.display_node("您想要删除的节点信息如下所示", self.tree.current_node)
+                    response = input("你确认永久删除{}吗[y]/n: ".format(self.tree.current_node.ch_name)).strip().lower()
+                    if response == 'y' or response == '':
+                        self.tree.remove_node()
+                        break
+                    else:
+                        not_delete.append(self.tree.current_node.ch_name)
+                    # print(not_delete)
+                    # 更新树结构并显示
+                    self.node_names = self.display_tree(self.tree.root, 0, False)
+                    # 从self.node_names中删除not_delete
+                    for node_name in not_delete:
+                        if node_name in self.node_names:
+                            self.node_names.remove(node_name)
+                    # print(self.node_names)
+                    self.tree.current_node = self.location_node(s, "delete")
+                
+                # 显示当前树结构
+                print("\n=====================\n当前树结构如下：\n=====================")
+                self.node_names = self.display_tree(self.tree.root)
+                print("=====================")
+                self.tree.current_node = self.tree.root
+            
+            elif classify.startswith("修改"):
+                # 显示当前节点信息并询问用户需要修改成什么
+                self.display_node("您想要修改的节点信息如下所示", self.tree.current_node)
+                new_en_name = input(f"请输入新的英文名称，回车保留当前数据： {self.tree.current_node.en_name} ").strip() or self.tree.current_node.en_name
+                new_ch_name = input(f"请输入新的中文名称，回车保留当前数据: {self.tree.current_node.ch_name} ").strip() or self.tree.current_node.ch_name
+                new_description = input(f"请输入新的描述，回车保留当前数据: {self.tree.current_node.description} ").strip() or self.tree.current_node.description
+                new_code = input(f"请输入新的代码，回车保留当前数据: {self.tree.current_node.code} ").strip() or self.tree.current_node.code
+                new_file_path = input(f"请输入新的文件路径，回车保留当前数据: {self.tree.current_node.file_path} ").strip() or self.tree.current_node.file_path
+                self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
+                
+                # 显示当前树结构
+                print("\n=====================\n当前树结构如下：\n=====================")
+                self.node_names = self.display_tree(self.tree.root)
+                print("=====================")
+            
+            elif classify.startswith("生成代码"):
+                # 生成当前节点的代码
+                self.tree.current_node = self.tree.root
+                print("开始在目录{}生成代码...".format(self.filepath))
+                self.tree.construct_current_code(self.filepath)
+                # 创建文件夹和文件
+                create_directory_and_files(self.tree.root.en_name, self.tree.file_node_map,self.tree.current_node, self.filepath, [])
+                save_tree_to_json(self.tree, self.tree.root.en_name+"/restore.json")
+                self.start_watching()
+                print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
+            
+            elif classify.startswith("展示信息"):
+                self.display_node("您想要的节点信息如下所示", self.tree.current_node)
+
+            elif classify.startswith("拆解"):
+                # print("\n=====================\n正在执行\n=====================")
+
+                # 获取从根节点到当前节点的所有ch_name
+                path = self.get_path_to_current_node()
+                # 将路径信息添加到s中
+                s = "从根节点到当前节点的名字依次是 " + " -> ".join(path) + " 请对 " + self.tree.current_node.ch_name +" 进行功能拆解"
+                
+                # 将当前节点转换为内部节点
+                self.tree.convert_leaf_to_internal(self.tree.current_node)
+                # 分解需求
+                children = self.decompose_requirements(s)
+                children = json.loads(children)
+                # 添加子节点
+                for child in children:
+                    self.tree.add_child(child['enName'].replace(" ",""), child['chName'], child['description'], '')
+
+                # 显示当前树结构
+                print("\n=====================\n当前树结构如下：\n=====================")
+                self.node_names = self.display_tree(self.tree.root)
+                print("=====================")
+
+            else:
+                # 显示当前树结构
+                print("\n=====================\n当前树结构如下：\n=====================")
+                self.node_names = self.display_tree(self.tree.root)
+                print("=====================")
+                print("对不起，我无法理解您的需求，请基于树结构详细描述您的需求。")
+            
+            # 询问用户是否有进一步的需求
+            print("\n请问您有什么进一步的需求？输入q/quit/exit/no退出系统。")
+            s = self.agent_imitate_user()
+            print("s: ", s)
+            while True:
+                if s.lower() in ["no", "q", "quit", "exit"]:
+                    return
+                # 分类用户输入的需求
+                self.tree.current_node = self.location_node(s)
+                classify = self.requirements_classification(s)
+                if classify.startswith("code"):
+                    break
+                if self.tree.current_node is None:
+                    # 显示当前树结构
+                    print("\n=====================\n当前树结构如下：\n=====================")
+                    self.node_names = self.display_tree(self.tree.root)
+                    print("=====================")
+                    print("\n对不起，我无法理解您的需求，您可以在输入中指明关键词：增删改查拆分，或者输入q/quit/exit/no退出系统。")
+                    s = self.agent_imitate_user()
+                else:
+                    break
+
+    def agent_imitate_user(self):
+        # 获取当前时间并格式化为字符串
+        current_time = datetime.now().strftime("%Y%m%d_%H")
+
+        # 使用当前时间作为日志文件名
+        log_filename = os.path.join(os.path.dirname(__file__), "log/{}.log".format(current_time))
+            
+        with open(log_filename, "r") as f:
+            history = f.read()
+        
+        prompt="你需要模拟一个想要实现学生管理系统的用户，你每次只能提一个具体需求。\
+            下面是你的对话历史: {history}。\
+            例子输出：我想要增加注册功能\
+        ".format(history=history)
+
+        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        output = res['message']['content'].lower()
+        
+        # 将output写入log文件
+        with open(log_filename, "a") as f:
+            f.write(output + "\n")
+        return output
