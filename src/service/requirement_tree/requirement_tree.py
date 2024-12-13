@@ -134,6 +134,20 @@ class RequirementTree:
             parent_node.add_child(new_internal_node)
         self.current_node = new_internal_node
 
+    def build_tree_from_dict(self, tree_dict):
+        # 接口8: 基于json递归构建树
+        node = rtn.RequirementInternalNode(
+            tree_dict['en_name'],
+            tree_dict['ch_name'],
+            tree_dict['description'],
+            tree_dict.get('file_path', '')
+        )
+        for child_dict in tree_dict.get('children', []):
+            child_node = self.build_tree_from_dict(child_dict)
+            node.add_child(child_node)
+        self.file_node_map[tree_dict.get('file_path', '')] = node
+        return node
+
     def to_dict(self):
         """
         把当前节点对应的子树转换成dict格式
@@ -156,6 +170,7 @@ class RequirementTree:
 
         Your output (only the json, no additional response):
         """.format(tree=json.dumps(self.to_dict()))
+        print(json.dumps(self.to_dict()))
         if read_config("language")=="Chinese":
             prompt="""
             你是一位顶尖的Python程序员。

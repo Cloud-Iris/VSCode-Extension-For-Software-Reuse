@@ -41,6 +41,8 @@ class RequirementManager:
             if act in s:
                 return act_list[act]
 
+        return "自动"
+
         str_node_names=",".join(self.node_names)
 
         res="n"
@@ -237,6 +239,30 @@ class RequirementManager:
         new_file_path = input(f"请输入新的文件路径，回车保留当前数据: {self.tree.current_node.file_path} ").strip() or self.tree.current_node.file_path
         self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
         
+        # 显示当前树结构
+        self.display_tree()
+
+    def process_by_agent(self, s):
+        self.tree.current_node = self.tree.root
+        # 生成对话提示
+        prompt = f"当前树信息如下：\n{json.dumps(self.tree.to_dict())}\n\n用户输入：{s}\n请基于用户的输入更新树信息，并以JSON格式输出整棵树的所有节点。"
+
+        # 调用大模型生成响应
+        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+
+        # 提取生成的文本
+        refined_requirements = res['message']['content'].strip()
+
+        # 使用正则表达式提取 JSON 内容
+        pattern = re.compile(r"```json(.*?)```", re.DOTALL)
+        matches = pattern.findall(refined_requirements)
+        if not matches:
+            raise ValueError("No JSON content found between triple backticks")
+
+        # 解析 JSON 并重新构建 self.root
+        updated_tree_info = json.loads(matches[0].strip())
+        self.tree.root = self.tree.build_tree_from_dict(updated_tree_info)
+
         # 显示当前树结构
         self.display_tree()
 
@@ -536,6 +562,9 @@ class RequirementManager:
                 # 显示当前树结构
                 self.display_tree()
 
+            elif classify.startswith("自动"):
+                self.process_by_agent(s)
+
             else:
                 # 显示当前树结构
                 self.display_tree()
@@ -648,6 +677,9 @@ class RequirementManager:
 
                 # 显示当前树结构
                 self.display_tree()
+            
+            elif classify.startswith("自动"):
+                self.process_by_agent(s)
 
             else:
                 # 显示当前树结构
