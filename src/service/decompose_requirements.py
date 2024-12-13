@@ -27,13 +27,15 @@ class RequirementManager:
 
         # 先用规则识别一层
         act_list = {
+            "细化": "拆解",
+            "笼统": "拆解",
             "添加": "添加",
-            "实现": "添加",
+            "实现": "拆解",
             "删除": "删除",
             "拆解": "拆解",
             "修改": "修改",
             "生成代码": "生成代码",
-            "展示信息": "展示信息"
+            "展示信息": "展示信息",
         }
         for act in act_list.keys():
             if act in s:
@@ -46,7 +48,7 @@ class RequirementManager:
 
         while res not in ["y", ""]:
             prompt = """你是语言专家。
-            将用户需求分类到以下类别之一：实现、添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
+            将用户需求分类到以下类别之一：细化、实现、添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
             需求：{requirement}
             分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
             """.format(requirement=s, node_names=str_node_names)
@@ -59,24 +61,13 @@ class RequirementManager:
             print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
             res = input().strip().lower()
             if res == "n":
-                print("意图识别失败，请重新输入。")
+                print("意图识别失败，请详细描述您的需求，例如：在{}中添加一个新的功能xxx".format(self.tree.current_node.ch_name))
+                # TO DO: 重新识别需求bug
                 s= input().strip().lower()
                 self.tree.current_node = self.location_node(s)
 
-        if "修改" in classification:
-            return "修改"
-        if "实现" in classification:
-            return "添加"
-        elif "添加" in classification:
-            return "添加"
-        elif "删除" in classification:
-            return "删除"
-        elif "生成代码" in classification:
-            return "生成代码"
-        elif "展示信息" in classification:
-            return "展示信息"
-        elif "拆解" in classification:
-            return "拆解"
+        if classification in act_list.keys():
+            return act_list[classification]
         else:
             return ""
 
@@ -312,7 +303,7 @@ class RequirementManager:
 
     def Rhetorical(self, s):
         # 生成对话提示
-        prompt = f"用户的问题是：{s}\n请进一步精细化需求，并可以给用户提问。"
+        prompt = f"用户的问题是：{s}\n请向用户提问，进一步精细化需求。"
 
         # 调用大模型生成响应
         res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
@@ -589,9 +580,10 @@ class RequirementManager:
                 print("current_node: ", self.tree.current_node.ch_name)
                 # 先generate一个current_node的叶子节点，再拆解这个叶子节点
                 en_name, ch_name, detailed_description= self.generate_node(s)
-                self.tree.add_child(en_name, ch_name, detailed_description, '')
-                self.tree.current_node = self.tree.current_node.children[-1]
-                self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
+                if ch_name not in self.node_names:
+                    self.tree.add_child(en_name, ch_name, detailed_description, '')
+                    self.tree.current_node = self.tree.current_node.children[-1]
+                    self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
 
                 # 分解需求
                 self.decompose_node()
