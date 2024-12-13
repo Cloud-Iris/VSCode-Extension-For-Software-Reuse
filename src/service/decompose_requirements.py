@@ -34,7 +34,8 @@ class RequirementManager:
             "删除": "删除",
             "拆解": "拆解",
             "修改": "修改",
-            "生成代码": "生成代码",
+            "代码": "生成代码",
+            "项目": "生成代码",
             "展示信息": "展示信息",
         }
         for act in act_list.keys():
@@ -139,6 +140,7 @@ class RequirementManager:
         """
         显示树的结构
         """
+
         print("\n=====================\n当前树结构如下：\n=====================")
         self.node_names = self.display_tree_dfs(self.tree.root)
         print("=====================")
@@ -157,6 +159,18 @@ class RequirementManager:
             for child in node.children:
                 node_name.extend(self.display_tree_dfs(child, depth + 1, display))
         return node_name
+
+    def generate_code(self):
+        # 生成当前节点的代码
+        self.tree.current_node = self.tree.root
+        print("开始在目录{}生成代码...".format(self.filepath))
+        self.tree.construct_current_code(self.filepath)
+        # 创建文件夹和文件
+        create_directory_and_files(self.tree.root.en_name, self.tree.file_node_map,self.tree.current_node, self.filepath, [])
+        save_tree_to_json(self.tree, self.tree.root.en_name+"/restore.json")
+        create_requirements_txt(self.tree, self.tree.root.en_name)
+        self.start_watching()
+        print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
 
     def init_tree(self) -> str:
         """
@@ -531,16 +545,7 @@ class RequirementManager:
                 self.modify_by_agent(s)
             
             elif classify.startswith("生成代码"):
-                # 生成当前节点的代码
-                self.tree.current_node = self.tree.root
-                print("开始在目录{}生成代码...".format(self.filepath))
-                self.tree.construct_current_code(self.filepath)
-                # 创建文件夹和文件
-                create_directory_and_files(self.tree.root.en_name, self.tree.file_node_map,self.tree.current_node, self.filepath, [])
-                save_tree_to_json(self.tree, self.tree.root.en_name+"/restore.json")
-                create_requirements_txt(self.tree, self.tree.root.en_name)
-                self.start_watching()
-                print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
+                self.generate_code()
             
             elif classify.startswith("展示信息"):
                 self.display_node("您想要的节点信息如下所示", self.tree.current_node)
@@ -649,15 +654,7 @@ class RequirementManager:
                 self.modify_by_user()
             
             elif classify.startswith("生成代码"):
-                # 生成当前节点的代码
-                self.tree.current_node = self.tree.root
-                print("开始在目录{}生成代码...".format(self.filepath))
-                self.tree.construct_current_code(self.filepath)
-                # 创建文件夹和文件
-                create_directory_and_files(self.tree.root.en_name, self.tree.file_node_map,self.tree.current_node, self.filepath, [])
-                save_tree_to_json(self.tree, self.tree.root.en_name+"/restore.json")
-                self.start_watching()
-                print("=====================\n所有代码生成完毕！请在{}中查看\n=====================".format(self.filepath))
+                self.generate_code()
             
             elif classify.startswith("展示信息"):
                 self.display_node("您想要的节点信息如下所示", self.tree.current_node)
