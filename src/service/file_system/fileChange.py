@@ -1,12 +1,12 @@
 import time, re
 from watchdog.events import FileSystemEventHandler
 import json
+import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 import multiprocess
 from requirement_tree.requirement_tree import RequirementTree
 from requirement_tree.requirement_tree_node import RequirementInternalNode
 import ollama
-import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
 from get_config import read_config
 

@@ -1,9 +1,9 @@
 import multiprocessing.connection
 from typing import TYPE_CHECKING
 import multiprocessing
+import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 import multiprocess
-import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
 from get_config import read_config
 
