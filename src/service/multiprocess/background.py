@@ -1,12 +1,12 @@
 import multiprocessing.connection
 import sys
 import os
+import ollama
 import typing
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 if typing.TYPE_CHECKING:
     from requirement_tree.requirement_tree import RequirementTree
 from requirement_tree.requirement_tree_visitor import BackgroundCodeGenerateVisitor
-
 
 def generate_code(conn: multiprocessing.connection.Connection, tree: 'RequirementTree'):
     print('start generate code at background')

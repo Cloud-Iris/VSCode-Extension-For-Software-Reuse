@@ -6,6 +6,7 @@ from requirement_tree.requirement_tree import RequirementTree
 from file_system.fileChange import *
 from watchdog.observers import Observer
 import threading
+import multiprocess
 from difflib import SequenceMatcher
 import time
 import jieba.posseg as pseg
@@ -55,7 +56,7 @@ class RequirementManager:
             需求：{requirement}
             分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
             """.format(requirement=s, node_names=str_node_names)
-            res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+            res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
             classification = res['message']['content'].lower()
             if classification not in act_list.keys():
                 s = self.Rhetorical(s)
@@ -83,7 +84,7 @@ class RequirementManager:
             input = input.strip()+"，有哪些功能\n"
 
         # 不对用户输入做过多处理，直接让大模型处理
-        init_res=ollama.chat(
+        init_res=multiprocess.multiprocess_chat(
             model=read_config("model"), 
             stream=False, 
             messages=[{"role": "user", "content": self.tree.root.ch_name+"中，"+input}], 
@@ -91,7 +92,7 @@ class RequirementManager:
         )
         # print("init_res: ", init_res["message"]["content"])
 
-        res = ollama.chat(
+        res = multiprocess.multiprocess_chat(
             model=read_config("model"), 
             stream=False, 
             messages=[{"role": "user", "content": role + input + one_shot + "\n请参考下面的功能分解" + init_res["message"]["content"]}], 
@@ -262,7 +263,7 @@ class RequirementManager:
         prompt = f"当前树信息如下：\n{json.dumps(self.tree.to_dict())}\n\n用户输入：{s}\n请基于用户的输入更新树信息，并以JSON格式输出整棵树的所有节点。"
 
         # 调用大模型生成响应
-        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
 
         # 提取生成的文本
         refined_requirements = res['message']['content'].strip()
@@ -292,7 +293,7 @@ class RequirementManager:
 
         while True:
             # 调用大模型生成响应
-            res = ollama.chat(format="json" ,model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+            res = multiprocess.multiprocess_chat(format="json" ,model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
 
             # 提取生成的文本并解析为JSON
             try:
@@ -327,7 +328,7 @@ class RequirementManager:
 
         {init_tree_example}
         """.format(requirement=requirement, init_tree_example=init_tree_example)
-        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         description = res['message']['content'].strip()
         lines = description.split('\n')
 
@@ -346,7 +347,7 @@ class RequirementManager:
         prompt = f"用户的问题是：{s}\n请向用户提问，进一步精细化需求。"
 
         # 调用大模型生成响应
-        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
 
         # 提取生成的文本
         refined_requirements = res['message']['content'].lower()
@@ -444,7 +445,7 @@ class RequirementManager:
                 )
             # print("prompt: ", prompt)
 
-            res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+            res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
             selected_node_name = res['message']['content'].strip()
 
             # print(f"=====================\n筛选前：{selected_node_name}\n=====================")
@@ -720,7 +721,7 @@ class RequirementManager:
             例子输出：我想要添加注册功能\
         ".format(history=history)
 
-        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         output = res['message']['content'].lower()
         
         # 将output写入log文件

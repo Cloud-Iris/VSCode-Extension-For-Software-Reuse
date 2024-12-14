@@ -7,7 +7,7 @@ import requirement_tree_visitor as rtv
 import ollama
 import json
 import multiprocessing
-sys.path.append(os.path.join(os.path.dirname(__file__), '../multiprocess'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 import multiprocess
 sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
 from get_config import read_config
@@ -227,5 +227,5 @@ class RequirementTree:
 
             你的输出（只有json，没有额外的回复）
             """.format(tree=json.dumps(self.to_dict()))
-        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         print(res['message']['content'])

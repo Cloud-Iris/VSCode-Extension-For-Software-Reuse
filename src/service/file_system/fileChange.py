@@ -1,6 +1,8 @@
 import time, re
 from watchdog.events import FileSystemEventHandler
 import json
+sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
+import multiprocess
 from requirement_tree.requirement_tree import RequirementTree
 from requirement_tree.requirement_tree_node import RequirementInternalNode
 import ollama
@@ -204,7 +206,7 @@ def create_requirements_txt(tree, root_en_name):
     prompt = f"以下是项目中的所有 import 语句：\n{json.dumps(imports, ensure_ascii=False, indent=4)}\n请生成 requirements.txt 的内容。"
 
     # 调用大模型生成响应
-    res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+    res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
     requirements_content = res['message']['content'].strip()
     pattern = re.compile(r"```(.*?)```", re.DOTALL)
     matches = pattern.findall(requirements_content)
