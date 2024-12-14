@@ -1,11 +1,35 @@
+import multiprocessing.connection
 import sys, os
 sys.path.append(os.path.dirname(__file__))
+import multiprocess.background
 import requirement_tree_node as rtn
 import requirement_tree_visitor as rtv
 import ollama
 import json
+import multiprocessing
+sys.path.append(os.path.join(os.path.dirname(__file__), '../multiprocess'))
+import multiprocess
 sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
 from get_config import read_config
+
+
+def do_change_tree(func):
+    def wrapper(self: 'RequirementTree', *args, **kwargs):
+        result = func(self, *args, **kwargs)
+
+        # generate at background
+        if self.conn is not None:
+            self.conn.send('stop')
+            self.conn.close()
+            self.conn = None
+        conn1, conn2 = multiprocessing.Pipe()
+        background = multiprocessing.Process(target=multiprocess.background.generate_code, args=(conn1, self))
+        background.start()
+        self.conn = conn2
+
+        return result
+    return wrapper
+
 
 class RequirementTree:
     def __init__(self, project_en_name: str='', project_ch_name: str='', project_description: str='', file_path: str=''):
@@ -16,10 +40,12 @@ class RequirementTree:
         self.root = rtn.RequirementInternalNode(project_en_name, project_ch_name, project_description, file_path)
         self.current_node = self.root
         self.file_node_map = {}
+        self.conn: multiprocessing.connection.Connection = None
 
     def get_current_node(self):
         return self.current_node
 
+    @do_change_tree
     def add_child(self, child_en_name: str, child_ch_name, child_description: str, file_path: str=''):
         """
         接口3.1: 给当前节点添加子节点
@@ -33,6 +59,7 @@ class RequirementTree:
         self.current_node.add_child(child)
         return child
     
+    @do_change_tree
     def remove_child(self, child_name: str) -> bool:
         """
         接口3.2: 给当前节点删除子节点
@@ -40,6 +67,7 @@ class RequirementTree:
         """
         return self.current_node.remove_child(child_name)
     
+    @do_change_tree
     def remove_node(self) -> bool:
         """
         接口3.3: 删除当前节点
@@ -71,12 +99,17 @@ class RequirementTree:
         if up:
             if self.current_node.parent is not None:
                 self.current_node = self.current_node.parent
+            else:
+                raise KeyError
         else:
             child = self.get_child_with_name(child_name)
             if child is not None:
                 self.current_node = child
+            else:
+                raise KeyError
         return self.current_node
     
+    @do_change_tree
     def modify_current_node(self, new_en_name=None, new_ch_name=None, new_description=None, new_code=None, new_file_path=None):
         """
         接口5: 修改当前节点
@@ -103,16 +136,20 @@ class RequirementTree:
         """
         # TODO: 添加用户反馈
 
-        # 如果当前节点是叶子节点，转换为叶子节点
-        if len(self.current_node.children) == 0:
-            parent: rtn.RequirementInternalNode = self.current_node.parent
-            leaf = self.current_node.convert_to_leaf_node()
-            parent.remove_child(leaf.en_name)
-            parent.add_child(leaf)
-            self.current_node = leaf
+        # # 如果当前节点是叶子节点，转换为叶子节点
+        # if len(self.current_node.children) == 0:
+        #     parent: rtn.RequirementInternalNode = self.current_node.parent
+        #     leaf = self.current_node.convert_to_leaf_node()
+        #     parent.remove_child(leaf.en_name)
+        #     parent.add_child(leaf)
+        #     self.current_node = leaf
 
-        # 生成代码
-        self.current_node.construct_code()
+        # # 生成代码
+        # self.current_node.construct_code()
+        print('等待背景进程返回生成结果')
+        tree: RequirementTree = self.conn.recv()
+        copy_visitor = rtv.CopyCodeVisitor(tree)
+        self.current_node.accept(copy_visitor)
 
         return self.current_node.code
 

@@ -1,4 +1,6 @@
+import multiprocessing.connection
 from typing import TYPE_CHECKING
+import multiprocessing
 
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
@@ -6,6 +8,7 @@ from get_config import read_config
 
 if TYPE_CHECKING:
     from requirement_tree_node import RequirementTreeNode, RequirementInternalNode, RequirementLeafNode
+    from requirement_tree import RequirementTree
 
 import ollama
 import json
@@ -136,6 +139,37 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
             node.code = extract_new_implementation_from_response(res['message']['content'])
 
 
+class BackgroundCodeGenerateVisitor(RequirementTreeVisitorBase):
+    def __init__(self, conn: multiprocessing.connection.Connection):
+        self.conn = conn
+
+    def visit_internal(self, node: 'RequirementInternalNode'):
+        for child in node.children:
+            if child.code == '':
+                child.accept(self)
+
+        prompt="""
+        You are a top-notch Python programmer. 
+        Now you have to write a python class to satisfy the following requirement: {requirement}.
+        What you can do is to call the interfaces provided by the following submodules.
+        {sub_module_codes}
+        Incorporate best practices and add comments where necessary. 
+        """.format(requirement=node.description, sub_module_codes=extract_submodule_codes(node))
+
+        if self.conn.poll(): # should stop
+            return
+        
+        res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        node.code = extract_new_implementation_from_response(res['message']['content'])
+            
+    
+    def visit_leaf(self, node: 'RequirementLeafNode'):
+        if self.conn.poll(): # should stop
+            return
+        constructor = ConstructCodeVisitor()
+        node.accept(constructor)
+
+
 class ConvertToDictVisitor(RequirementTreeVisitorBase):
     """
     把一棵需求树转成dict格式
@@ -159,3 +193,16 @@ class ConvertToDictVisitor(RequirementTreeVisitorBase):
         }
 
 
+class CopyCodeVisitor(RequirementTreeVisitorBase):
+    def __init__(self, src: 'RequirementTree'):
+        self.src = src
+    
+    def visit_leaf(self, node):
+        node.code = self.src.current_node.code
+
+    def visit_internal(self, node):
+        node.code = self.src.current_node.code
+        for child in node.children:
+            self.src.move_current_node(False, child.en_name)
+            node.accept(self)
+            self.src.move_current_node(True)
