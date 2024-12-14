@@ -19,8 +19,11 @@ def do_change_tree(func):
 
         # generate at background
         if self.conn is not None:
-            self.conn.send('stop')
-            self.conn.close()
+            try:
+                self.conn.send('stop')
+                self.conn.close()
+            except BrokenPipeError:
+                pass
             self.conn = None
         conn1, conn2 = multiprocessing.Pipe()
         background = multiprocessing.Process(target=multiprocess.background.generate_code, args=(conn1, self))
@@ -148,6 +151,7 @@ class RequirementTree:
         # self.current_node.construct_code()
         print('等待背景进程返回生成结果')
         tree: RequirementTree = self.conn.recv()
+        print('接收到背景进程生成结果')
         copy_visitor = rtv.CopyCodeVisitor(tree)
         self.current_node.accept(copy_visitor)
 

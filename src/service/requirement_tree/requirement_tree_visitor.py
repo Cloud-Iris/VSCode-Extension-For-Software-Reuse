@@ -26,10 +26,11 @@ class RequirementTreeVisitorBase:
 
 
 def extract_new_implementation_from_response(response: str) -> str:
-    print("response: ", response)
     matches = re.findall(r'```Python(.*?)```', response, re.DOTALL | re.IGNORECASE)
     if(len(matches) < 1):
         matches = re.findall(r'```(.*?)```', response, re.DOTALL)
+    if len(matches) < 1:
+        return response
     return matches[0].strip()
 
 
@@ -145,6 +146,9 @@ class BackgroundCodeGenerateVisitor(RequirementTreeVisitorBase):
 
     def visit_internal(self, node: 'RequirementInternalNode'):
         for child in node.children:
+            if self.conn.poll(): # should stop
+                print('stopped')
+                return
             if child.code == '':
                 child.accept(self)
 
@@ -157,6 +161,7 @@ class BackgroundCodeGenerateVisitor(RequirementTreeVisitorBase):
         """.format(requirement=node.description, sub_module_codes=extract_submodule_codes(node))
 
         if self.conn.poll(): # should stop
+            print('stopped')
             return
         
         res = ollama.chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
@@ -165,6 +170,7 @@ class BackgroundCodeGenerateVisitor(RequirementTreeVisitorBase):
     
     def visit_leaf(self, node: 'RequirementLeafNode'):
         if self.conn.poll(): # should stop
+            print('stopped')
             return
         constructor = ConstructCodeVisitor()
         node.accept(constructor)
@@ -204,5 +210,5 @@ class CopyCodeVisitor(RequirementTreeVisitorBase):
         node.code = self.src.current_node.code
         for child in node.children:
             self.src.move_current_node(False, child.en_name)
-            node.accept(self)
+            child.accept(self)
             self.src.move_current_node(True)
