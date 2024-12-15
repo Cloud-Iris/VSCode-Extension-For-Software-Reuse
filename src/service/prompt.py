@@ -44,15 +44,6 @@ None
 #####################################
 """
 
-classify_example="""
-The folling is an example of the input and output:
-####################################
-Requirement: 我想要A操作
-#####################################
-Output: A
-#####################################
-"""
-
 init_tree_example="""
 The folling is an example of the input and output:
 
@@ -90,38 +81,43 @@ Output:
 ]
 """
 
-one_shot2="""
-
-The following is an example of the input and output:
-
+process_json_example="""
 ####################################
-input: 
-从根节点到当前节点的名字依次是 Z->计算器，请对 计算器 进行功能拆解
-#####################################
+Input:
+我想要把B移动到C下面
+{
+  "ch_name": "A",
+  "children": [
+    {
+      "ch_name": "B",
+      "children": []
+    },
+    {
+      "ch_name": "C",
+      "children": []
+    }
+  ]
+}
+####################################
 Inference:
-用户想要对 计算器 进行功能拆解, 我认为 计算器 需要具有 加法, 减法, 乘法, 除法 等功能，所以返回 加法, 减法, 乘法, 除法
+因为并没有涉及A这个节点，所以我需要将A原封不动地返回，因为要将C移动到B下面，所以C要被放在B的children里面，所以我要返回的是
 ####################################
 Output:
-[
+```json
+{
+  "ch_name": "A",
+  "children": [
     {
-        "name": "加法",
-        "enName": "Add Operation",
-        "description": "实现两个数相加的功能"
-    },
-    {
-        "name": "减法",
-        "enName": "Subtraction Operation",
-        "description": "实现两个数相减的功能"
-    },
-    {
-        "name": "乘法",
-        "enName": "Multiplication Operation",
-        "description": "实现两个数相乘的功能"
-    },
-    {
-        "name": "除法",
-        "enName": "Division Operation",
-        "description": "实现两个数相除的功能"
+      "ch_name": "C",
+      "children": [
+        {
+          "ch_name": "B",
+          "children": []
+        }
+      ]
     }
-]
+  ]
+}
+```
+####################################
 """

@@ -1,7 +1,7 @@
 import json
 import ollama
 import re
-from prompt import role, task, one_shot, location_node_example, init_tree_example, classify_example, one_shot2
+from prompt import role, task, one_shot, location_node_example, init_tree_example, process_json_example
 from requirement_tree.requirement_tree import RequirementTree
 from file_system.fileChange import *
 from watchdog.observers import Observer
@@ -12,6 +12,7 @@ import time
 import jieba.posseg as pseg
 from datetime import datetime
 import sys, os
+from process_tree import *
 sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
 from get_config import read_config
 
@@ -41,19 +42,20 @@ class RequirementManager:
             "完成": "拆解",  # 完成某个功能或任务可视为对其进行拆解实现
             "执行": "拆解",
             "构建": "拆解",  # 构建某个东西可分解为多个步骤来实现，即拆解实现
-            "添加": "添加",
-            "增加": "添加",
-            "补充": "添加",
-            "插入": "添加",
-            "删除": "删除",
-            "移除": "删除",
-            "去掉": "删除",
-            "清除": "删除",
-            "修改": "修改",
-            "更改": "修改",
-            "编辑": "修改",
-            "调整": "修改",
-            "修正": "修改",
+            "增": "增",
+            "添加": "增",
+            "增加": "增",
+            "补充": "增",
+            "插入": "增",
+            "删": "删",
+            "移除": "删",
+            "去掉": "删",
+            "清除": "删",
+            "改": "改",
+            "更改": "改",
+            "编辑": "改",
+            "调整": "改",
+            "修正": "改",
             "代码": "生成代码",
             "程序": "生成代码",  # 用户提及编写程序也可理解为生成代码
             "脚本": "生成代码",
@@ -61,12 +63,12 @@ class RequirementManager:
             "项目": "生成代码",
             "工程": "生成代码",  # 开发项目或工程需要生成代码
             "应用": "生成代码",  # 创建应用程序涉及代码生成
-            "展示信息": "展示信息",
-            "显示": "展示信息",
-            "呈现": "展示信息",
-            "列出": "展示信息",
-            "打印": "展示信息",  # 在编程语境中，打印信息也是一种展示方式
-            "输出": "展示信息"  # 输出相关内容可理解为展示信息
+            "查": "查",
+            "展示": "查",
+            "呈现": "查",
+            "列出": "查",
+            "打印": "查",  # 在编程语境中，打印信息也是一种展示方式
+            "输出": "查"  # 输出相关内容可理解为查
         }
         for act in act_list.keys():
             if act in s:
@@ -79,7 +81,7 @@ class RequirementManager:
 
         while res not in ["y", ""]:
             prompt = """你是语言专家。
-            将用户需求分类到以下类别之一：细化、实现、添加、删除、拆解、修改、生成代码、展示信息。仅返回一个词。
+            将用户需求分类到以下类别之一：增、删、改、查、拆解、生成代码。仅返回一个词。
             需求：{requirement}
             分类的目的是判断用户想要对{node_names}中的某个节点进行何种操作
             """.format(requirement=s, node_names=str_node_names)
@@ -89,7 +91,7 @@ class RequirementManager:
                 s = self.Rhetorical(s)
                 res = "n"
                 continue
-            print("请问你是想对{}进行{}操作吗 [y]/n".format(self.tree.current_node.ch_name, classification))
+            print(f"请问你是想对 {self.tree.current_node.ch_name} 进行 \"{classification}\" 操作吗？ [y]/n")
             res = input().strip().lower()
             if res == "n":
                 return "自动"
@@ -116,12 +118,14 @@ class RequirementManager:
         )
         # print("init_res: ", init_res["message"]["content"])
 
+        print("Please wait for a moment, the system is decomposing the requirements...")
         res = multiprocess.multiprocess_chat(
             model=read_config("model"), 
             stream=False, 
             messages=[{"role": "user", "content": role + input + one_shot + "\n请参考下面的功能分解" + init_res["message"]["content"]}], 
             options={"temperature": 0},
         )
+        print("The requirements have been decomposed.")
         content = res['message']['content']
         # print("content: ", content)
         pattern = r'\[([^\]]*)\]'
@@ -262,15 +266,15 @@ class RequirementManager:
         # 分解需求
         children = self.decompose_requirements(self.tree.current_node.ch_name)
         children = json.loads(children)
-        # 添加子节点
+        # 增子节点
         for child in children:
             if child["chName"] in self.node_names:
                 continue
             self.tree.add_child(child['enName'].replace(" ","").replace("-","").replace("_",""), child['chName'], child['description'], '')
 
     def modify_by_user(self):
-        # 显示当前节点信息并询问用户需要修改成什么
-        self.display_node("您想要修改的节点信息如下所示", self.tree.current_node)
+        # 显示当前节点信息并询问用户需要改成什么
+        self.display_node("您想要改的节点信息如下所示", self.tree.current_node)
         new_en_name = input(f"请输入新的英文名称，回车保留当前数据： {self.tree.current_node.en_name} ").strip() or self.tree.current_node.en_name
         new_ch_name = input(f"请输入新的中文名称，回车保留当前数据: {self.tree.current_node.ch_name} ").strip() or self.tree.current_node.ch_name
         new_description = input(f"请输入新的描述，回车保留当前数据: {self.tree.current_node.description} ").strip() or self.tree.current_node.description
@@ -281,21 +285,27 @@ class RequirementManager:
         # 显示当前树结构
         self.display_tree()
 
+    # 让大模型直接处理整棵树
     def process_by_agent(self, s):
         self.tree.current_node = self.tree.root
+        json_without_description = delete_description(json.dumps(self.tree.to_dict()))
+
         flag=True
         while flag:
             flag=False
-            print("json.dumps(self.tree.to_dict()): ", json.dumps(self.tree.to_dict()))
+            # print("json.dumps(self.tree.to_dict()): ", json.dumps(self.tree.to_dict()))
             # 生成对话提示
-            prompt = f"请基于用户的输入更新树信息，并以JSON格式输出整棵树的所有节点。\n用户输入：{s}\n\n当前树信息如下：\n{json.dumps(self.tree.to_dict())}\n"
+            prompt = f"你是一位专业的 JSON 专家。\n\
+            用户需求：我想要{s}\n\
+            请基于用户需求修改JSON，返回的JSON里面的对象属性必须完全包含{",".join(self.node_names)}\n\
+            当前JSON如下：\n{json_without_description}\n\
+            例子：{process_json_example}"
 
             # 调用大模型生成响应
             res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
 
             # 提取生成的文本
             refined_requirements = res['message']['content'].strip()
-            print(refined_requirements)
 
             # 使用正则表达式提取 JSON 内容
             pattern = re.compile(r"```json(.*?)```", re.DOTALL)
@@ -305,9 +315,9 @@ class RequirementManager:
 
             # 解析 JSON 并重新构建 self.root
             updated_tree_info = json.loads(matches[0].strip())
-            if updated_tree_info:
+            try:
                 self.tree.root = self.tree.build_tree_from_dict(updated_tree_info)
-            else:
+            except Exception as e:
                 flag=True
 
         # 显示当前树结构
@@ -342,7 +352,7 @@ class RequirementManager:
         new_file_path = updated_info.get("file_path", self.tree.current_node.file_path)
         self.tree.modify_current_node(new_en_name, new_ch_name, new_description, new_code, new_file_path)
 
-        # 拆解修改后的需求
+        # 拆解改后的需求
         self.decompose_node()
         
         # 显示当前树结构
@@ -414,7 +424,7 @@ class RequirementManager:
 
     def start_watching(self):
         """
-        启动文件监听器，监听指定目录中的文件修改事件。
+        启动文件监听器，监听指定目录中的文件改事件。
         @param directory: 要监听的目录
         @param node_map: 文件名到节点的映射
         """
@@ -531,7 +541,7 @@ class RequirementManager:
         
         while s.lower() not in ["no", "q", "quit", "exit"]:
             
-            if classify.startswith("添加"):
+            if classify.startswith("增"):
                 # print("\n=====================\n正在执行\n=====================")
                
                 # 将当前节点转换为内部节点
@@ -549,12 +559,12 @@ class RequirementManager:
                 # 显示当前树结构
                 self.display_tree()
             
-            elif classify.startswith("删除"):
+            elif classify.startswith("删"):
                 not_delete = [self.tree.root.ch_name]
-                # 循环删除节点，直到用户确认删除
+                # 循环删节点，直到用户确认删
                 while self.tree.current_node is not None:
-                    self.display_node("您想要删除的节点信息如下所示", self.tree.current_node)
-                    response = input("你确认永久删除{}吗[y]/n: ".format(self.tree.current_node.ch_name)).strip().lower()
+                    self.display_node("您想要删的节点信息如下所示", self.tree.current_node)
+                    response = input("你确认永久删{}吗[y]/n: ".format(self.tree.current_node.ch_name)).strip().lower()
                     if response == 'y' or response == '':
                         self.tree.remove_node()
                     else:
@@ -562,7 +572,7 @@ class RequirementManager:
                     # print(not_delete)
                     # 更新树结构并显示
                     self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
-                    # 从self.node_names中删除not_delete
+                    # 从self.node_names中删not_delete
                     for node_name in not_delete:
                         if node_name in self.node_names:
                             self.node_names.remove(node_name)
@@ -573,14 +583,14 @@ class RequirementManager:
                 self.display_tree()
                 self.tree.current_node = self.tree.root
             
-            elif classify.startswith("修改"):
+            elif classify.startswith("改"):
                 # self.modify_by_user()
                 self.modify_by_agent(s)
             
             elif classify.startswith("生成代码"):
                 self.generate_code()
             
-            elif classify.startswith("展示信息"):
+            elif classify.startswith("查"):
                 self.display_node("您想要的节点信息如下所示", self.tree.current_node)
 
             elif classify.startswith("拆解"):
@@ -588,7 +598,7 @@ class RequirementManager:
 
                 # 获取从根节点到当前节点的所有ch_name
                 path = self.get_path_to_current_node()
-                # 将路径信息添加到s中
+                # 将路径信息增到s中
                 s = "从根节点到当前节点的名字依次是 " + " -> ".join(path) + " 请对 " + self.tree.current_node.ch_name +" 进行功能拆解"
                 
                 # 将当前节点转换为内部节点
@@ -639,7 +649,7 @@ class RequirementManager:
         
         while s.lower() not in ["no", "q", "quit", "exit"]:
             
-            if classify.startswith("添加"):
+            if classify.startswith("增"):
                 # print("\n=====================\n正在执行\n=====================")
                
                 # 将当前节点转换为内部节点
@@ -658,12 +668,12 @@ class RequirementManager:
                 # 显示当前树结构
                 self.display_tree()
             
-            elif classify.startswith("删除"):
+            elif classify.startswith("删"):
                 not_delete = [self.tree.root.ch_name]
-                # 循环删除节点，直到用户确认删除
+                # 循环删节点，直到用户确认删
                 while self.tree.current_node is not None:
-                    self.display_node("您想要删除的节点信息如下所示", self.tree.current_node)
-                    response = input("你确认永久删除{}吗[y]/n: ".format(self.tree.current_node.ch_name)).strip().lower()
+                    self.display_node("您想要删的节点信息如下所示", self.tree.current_node)
+                    response = input("你确认永久删{}吗[y]/n: ".format(self.tree.current_node.ch_name)).strip().lower()
                     if response == 'y' or response == '':
                         self.tree.remove_node()
                         break
@@ -672,7 +682,7 @@ class RequirementManager:
                     # print(not_delete)
                     # 更新树结构并显示
                     self.node_names = self.display_tree_dfs(self.tree.root, 0, False)
-                    # 从self.node_names中删除not_delete
+                    # 从self.node_names中删not_delete
                     for node_name in not_delete:
                         if node_name in self.node_names:
                             self.node_names.remove(node_name)
@@ -683,13 +693,13 @@ class RequirementManager:
                 self.display_tree()
                 self.tree.current_node = self.tree.root
             
-            elif classify.startswith("修改"):
+            elif classify.startswith("改"):
                 self.modify_by_user()
             
             elif classify.startswith("生成代码"):
                 self.generate_code()
             
-            elif classify.startswith("展示信息"):
+            elif classify.startswith("查"):
                 self.display_node("您想要的节点信息如下所示", self.tree.current_node)
 
             elif classify.startswith("拆解"):
@@ -697,7 +707,7 @@ class RequirementManager:
 
                 # 获取从根节点到当前节点的所有ch_name
                 path = self.get_path_to_current_node()
-                # 将路径信息添加到s中
+                # 将路径信息增到s中
                 s = "从根节点到当前节点的名字依次是 " + " -> ".join(path) + " 请对 " + self.tree.current_node.ch_name +" 进行功能拆解"
                 
                 # 将当前节点转换为内部节点
@@ -750,7 +760,7 @@ class RequirementManager:
         
         prompt="你需要模拟一个想要实现学生管理系统的用户，请提出一个具体的需求。\
             下面是你的对话历史: {history}。\
-            例子输出：我想要添加注册功能\
+            例子输出：我想要增注册功能\
         ".format(history=history)
 
         res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})

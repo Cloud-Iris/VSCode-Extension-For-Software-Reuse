@@ -9,6 +9,7 @@ if typing.TYPE_CHECKING:
 from requirement_tree.requirement_tree_visitor import BackgroundCodeGenerateVisitor
 
 def generate_code(conn: multiprocessing.connection.Connection, tree: 'RequirementTree'):
+    return
     print('start generate code at background')
     visitor = BackgroundCodeGenerateVisitor(conn)
     tree.root.accept(visitor)
