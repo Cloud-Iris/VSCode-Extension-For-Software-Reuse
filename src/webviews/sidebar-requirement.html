@@ -11,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
+    <!-- TODO 进入插件，显示库里所有的现有项目，或者启动一个新项目 -->
     <div class="input-container" id="input-container">
         <input type="text" id="requirement-input" placeholder="请输入需求">
         <button onclick="submitRequirement()">提交</button>
@@ -160,21 +161,25 @@
 
         // #region 向后端发送请求
         async function fetchSubRequirements(requirement) {
-            const { data } = await axiosInstance.post("/depose-req-for-level-2", {
-                req: requirement
-            })
-            return data._2LevelReqs;
+            // 问题-》观察-》调研-》分析-》推理-》设计实验方案验证-》总结-》提出新问题
+            // 拿别人的方法来试试能不能解决问题，如果不完全能，看看 gap 和缺陷在哪里
+            // 把父节点的合并规划 带给子节点，让子节点带着父节点的合并规划去做
+            // 学会挑刺，别人针对问题提出的方法，我们要找到做的不好的地方
+            // const { data } = await axiosInstance.post("/depose-req-for-level-2", {
+            //     req: requirement // 主需求
+            // })
+            // return data._2LevelReqs;
 
-            // // 模拟后端返回的数据
-            // return new Promise((resolve) => {
-            //     setTimeout(() => {
-            //         resolve([
-            //             `默认 2 级需求 111 for ${requirement}`,
-            //             `默认 2 级需求 222 for ${requirement}`,
-            //             `默认 2 级需求 333 for ${requirement}`
-            //         ]);
-            //     }, 500); // 模拟网络延迟
-            // });
+            // 模拟后端返回的数据
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve([
+                        `默认 2 级需求 111 for ${requirement}`,
+                        `默认 2 级需求 222 for ${requirement}`,
+                        `默认 2 级需求 333 for ${requirement}`
+                    ]);
+                }, 500); // 模拟网络延迟
+            });
         }
 
         async function fetchLevelRequirements(module, requirement, level) {

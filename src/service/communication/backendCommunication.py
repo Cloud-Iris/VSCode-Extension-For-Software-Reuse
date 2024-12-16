@@ -5,6 +5,8 @@ from decompose_requirements import RequirementManager
 import os
 from file_system.fileChange import load_tree_from_json
 
+WHITE_LIST = ['/receive-folder-path', '/depose-req-for-level-2']
+
 class BackendService:
     def __init__(self):
         self.app = Flask(__name__)
@@ -43,8 +45,8 @@ class BackendService:
             """
             # TODO：暂时注释掉为了控制台交互方便展示，后面这里不应该触发建立需求树，因为用户需要是要从前端传过来的
             # 获取工作区路径时不进行任何操作 
-            # if response.endpoint == 'receive-folder-path':
-            #     return response
+            if request.path in WHITE_LIST:
+                return response
             # 这里可以执行一些请求后的操作
             manager = RequirementManager(self.parsed_str)
             manager.user_interaction()
