@@ -1,4 +1,38 @@
-import requirement_tree.requirement_tree_node as rtn
+import multiprocessing.connection
+import sys, os
+sys.path.append(os.path.dirname(__file__))
+import multiprocess.background
+import requirement_tree_node as rtn
+import requirement_tree_visitor as rtv
+import ollama
+import json
+import multiprocessing
+sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
+import multiprocess
+sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
+from get_config import read_config
+
+
+def do_change_tree(func):
+    def wrapper(self: 'RequirementTree', *args, **kwargs):
+        result = func(self, *args, **kwargs)
+
+        # generate at background
+        if self.conn is not None:
+            try:
+                self.conn.send('stop')
+                self.conn.close()
+            except BrokenPipeError:
+                pass
+            self.conn = None
+        conn1, conn2 = multiprocessing.Pipe()
+        background = multiprocessing.Process(target=multiprocess.background.generate_code, args=(conn1, self))
+        background.start()
+        self.conn = conn2
+
+        return result
+    return wrapper
+
 
 class RequirementTree:
     def __init__(self, project_en_name: str='', project_ch_name: str='', project_description: str='', file_path: str=''):
@@ -9,11 +43,13 @@ class RequirementTree:
         self.root = rtn.RequirementInternalNode(project_en_name, project_ch_name, project_description, file_path)
         self.current_node = self.root
         self.file_node_map = {}
+        self.conn: multiprocessing.connection.Connection = None
 
-    def get_current_node(self) -> rtn.RequirementTreeNode:
+    def get_current_node(self):
         return self.current_node
 
-    def add_child(self, child_en_name: str, child_ch_name, child_description: str, file_path: str) -> rtn.RequirementTreeNode:
+    @do_change_tree
+    def add_child(self, child_en_name: str, child_ch_name, child_description: str, file_path: str=''):
         """
         接口3.1: 给当前节点添加子节点
         @param file_path: 在插件里才能用到，目前直接传入空字符串
@@ -26,6 +62,7 @@ class RequirementTree:
         self.current_node.add_child(child)
         return child
     
+    @do_change_tree
     def remove_child(self, child_name: str) -> bool:
         """
         接口3.2: 给当前节点删除子节点
@@ -33,6 +70,7 @@ class RequirementTree:
         """
         return self.current_node.remove_child(child_name)
     
+    @do_change_tree
     def remove_node(self) -> bool:
         """
         接口3.3: 删除当前节点
@@ -45,7 +83,7 @@ class RequirementTree:
         self.current_node=parent
         return return_value
     
-    def get_child_with_name(self, child_name: str) -> rtn.RequirementTreeNode:
+    def get_child_with_name(self, child_name: str):
         """
         获取当前节点名为 child_name 的子节点，不存在时返回 None
         """
@@ -54,7 +92,7 @@ class RequirementTree:
                 return child
         return None
 
-    def move_current_node(self, up: bool, child_name: str = None) -> rtn.RequirementTreeNode:
+    def move_current_node(self, up: bool, child_name: str = None):
         """
         接口4: 移动当前节点
         @param up: 为True时移动到父节点，child_name不需要传入；
@@ -64,12 +102,17 @@ class RequirementTree:
         if up:
             if self.current_node.parent is not None:
                 self.current_node = self.current_node.parent
+            else:
+                raise KeyError
         else:
             child = self.get_child_with_name(child_name)
             if child is not None:
                 self.current_node = child
+            else:
+                raise KeyError
         return self.current_node
     
+    @do_change_tree
     def modify_current_node(self, new_en_name=None, new_ch_name=None, new_description=None, new_code=None, new_file_path=None):
         """
         接口5: 修改当前节点
@@ -96,20 +139,25 @@ class RequirementTree:
         """
         # TODO: 添加用户反馈
 
-        # 如果当前节点是叶子节点，转换为叶子节点
-        if len(self.current_node.children) == 0:
-            parent: rtn.RequirementInternalNode = self.current_node.parent
-            leaf = self.current_node.convert_to_leaf_node()
-            parent.remove_child(leaf.en_name)
-            parent.add_child(leaf)
-            self.current_node = leaf
+        # # 如果当前节点是叶子节点，转换为叶子节点
+        # if len(self.current_node.children) == 0:
+        #     parent: rtn.RequirementInternalNode = self.current_node.parent
+        #     leaf = self.current_node.convert_to_leaf_node()
+        #     parent.remove_child(leaf.en_name)
+        #     parent.add_child(leaf)
+        #     self.current_node = leaf
 
-        # 生成代码
-        self.current_node.construct_code()
+        # # 生成代码
+        # self.current_node.construct_code()
+        print('等待背景进程返回生成结果')
+        tree: RequirementTree = self.conn.recv()
+        print('接收到背景进程生成结果')
+        copy_visitor = rtv.CopyCodeVisitor(tree)
+        self.current_node.accept(copy_visitor)
 
         return self.current_node.code
 
-    def convert_leaf_to_internal(self, leaf_node: rtn.RequirementLeafNode):
+    def convert_leaf_to_internal(self, leaf_node):
         """
         接口7: 将叶子结点转换为内部结点
         @param leaf_node: 要转换的叶子结点
@@ -126,3 +174,58 @@ class RequirementTree:
             parent_node.remove_child(leaf_node)
             parent_node.add_child(new_internal_node)
         self.current_node = new_internal_node
+
+    def build_tree_from_dict(self, tree_dict):
+        # 接口8: 基于json递归构建树
+        node = rtn.RequirementInternalNode(
+            tree_dict['en_name'],
+            tree_dict['ch_name'],
+            tree_dict['description'],
+            tree_dict.get('file_path', '')
+        )
+        for child_dict in tree_dict.get('children', []):
+            child_node = self.build_tree_from_dict(child_dict)
+            node.add_child(child_node)
+        self.file_node_map[tree_dict.get('file_path', '')] = node
+        return node
+
+    def to_dict(self):
+        """
+        把当前节点对应的子树转换成dict格式
+        """
+        to_dict_visitor = rtv.ConvertToDictVisitor()
+        return self.current_node.accept(to_dict_visitor)
+
+    def generate_dependencies(self):
+        prompt="""
+        You are a top-notch Python programmer. 
+        You are presented with a tree-structured requirement in the form of json, where the funtion of a node is composed of its child nodes.
+        You are responsible to explore the functionalities and identify the dependencies between the nodes of the tree and output them in the form of array json.
+        Output Example:
+        [[Frontend, Add], [Frontend, Subtract]]
+        which means Frontend Module is dependent on both Add and Subtract Module.
+        Only output the dependencies which cannot derive from the tree structure, i.e. non parent-child dependencies.
+
+        The given requirement tree is:
+        {tree}
+
+        Your output (only the json, no additional response):
+        """.format(tree=json.dumps(self.to_dict()))
+        print(json.dumps(self.to_dict()))
+        if read_config("language")=="Chinese":
+            prompt="""
+            你是一位顶尖的Python程序员。
+            你被赋予了一个树形结构的需求，其中每个节点的功能由其子节点组成。
+            你的任务是探索功能并识别树的节点之间的依赖关系，并以数组json的形式输出。
+            输出示例：
+            [[前端，加法]，[后端，减法]]
+            这意味着前端模块依赖于加法和减法模块。
+            只输出不能从树结构推导出的依赖关系，即非父子依赖关系。
+
+            给定的需求树是：
+            {tree}
+
+            你的输出（只有json，没有额外的回复）
+            """.format(tree=json.dumps(self.to_dict()))
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        print(res['message']['content'])

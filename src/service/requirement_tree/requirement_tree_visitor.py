@@ -1,7 +1,15 @@
+import multiprocessing.connection
 from typing import TYPE_CHECKING
+import multiprocessing
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
+import multiprocess
+sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
+from get_config import read_config
 
 if TYPE_CHECKING:
     from requirement_tree_node import RequirementTreeNode, RequirementInternalNode, RequirementLeafNode
+    from requirement_tree import RequirementTree
 
 import ollama
 import json
@@ -22,6 +30,8 @@ def extract_new_implementation_from_response(response: str) -> str:
     matches = re.findall(r'```Python(.*?)```', response, re.DOTALL | re.IGNORECASE)
     if(len(matches) < 1):
         matches = re.findall(r'```(.*?)```', response, re.DOTALL)
+    if len(matches) < 1:
+        return response
     return matches[0].strip()
 
 
@@ -60,7 +70,7 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
         Incorporate best practices and add comments where necessary. 
         Present only the refactored code.
         """.format(requirement=self.requirement,code=node.code)
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         node.code = extract_new_implementation_from_response(res['message']['content'])
     
     def visit_internal(self, node: 'RequirementInternalNode'):
@@ -77,7 +87,7 @@ class AddInterfaceVisitor(RequirementTreeVisitorBase):
         If the submodules satisfy your need, present only the refactored code. Otherwise, reply 'No, I need ...' and your requirement.
         """.format(requirement=self.requirement, code=node.code, sub_module_codes=extract_submodule_codes(node))
 
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
 
         satisfiable = extract_satisfiability_from_response(res['message']['content'])
 
@@ -97,9 +107,10 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
         You are a top-notch Python programmer. 
         For the following requirement: {requirement}. 
         Write a python class called {name} to satisfy the requirement.
+        请封装一些模块。
         Incorporate best practices and add comments where necessary. 
         """.format(name=node.en_name, requirement=node.description)
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         node.code = extract_new_implementation_from_response(res['message']['content'])
 
     def visit_internal(self, node: 'RequirementInternalNode'):
@@ -116,9 +127,9 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
         {sub_module_codes}
         If the interface you need was not providede by the submodule, please let me know what kind of interface you actually need.        
         Incorporate best practices and add comments where necessary. 
-        If the submodules satisfy your need, present only the refactored code. Otherwise, reply 'No, I need ...' and your requirement.
         """.format(requirement=node.description, sub_module_codes=extract_submodule_codes(node))
-        res = ollama.chat(model="llama3:8b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        # If the submodules satisfy your need, present only the refactored code. Otherwise, reply 'No, I need ...' and your requirement.
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
         satisfiable = extract_satisfiability_from_response(res['message']['content'])
         if not satisfiable: # 需要修改子节点
             req = extract_child_requirement_from_response(res['message']['content'])
@@ -130,5 +141,75 @@ class ConstructCodeVisitor(RequirementTreeVisitorBase):
             node.code = extract_new_implementation_from_response(res['message']['content'])
 
 
+class BackgroundCodeGenerateVisitor(RequirementTreeVisitorBase):
+    def __init__(self, conn: multiprocessing.connection.Connection):
+        self.conn = conn
+
+    def visit_internal(self, node: 'RequirementInternalNode'):
+        for child in node.children:
+            if self.conn.poll(): # should stop
+                print('stopped')
+                return
+            if child.code == '':
+                child.accept(self)
+
+        prompt="""
+        You are a top-notch Python programmer. 
+        Now you have to write a python class to satisfy the following requirement: {requirement}.
+        What you can do is to call the interfaces provided by the following submodules.
+        {sub_module_codes}
+        Incorporate best practices and add comments where necessary. 
+        """.format(requirement=node.description, sub_module_codes=extract_submodule_codes(node))
+
+        if self.conn.poll(): # should stop
+            print('stopped')
+            return
+        
+        res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+        node.code = extract_new_implementation_from_response(res['message']['content'])
+            
+    
+    def visit_leaf(self, node: 'RequirementLeafNode'):
+        if self.conn.poll(): # should stop
+            print('stopped')
+            return
+        constructor = ConstructCodeVisitor()
+        node.accept(constructor)
 
 
+class ConvertToDictVisitor(RequirementTreeVisitorBase):
+    """
+    把一棵需求树转成dict格式
+    """
+    def visit_leaf(self, node: 'RequirementLeafNode'):
+        return {
+            'en_name': node.en_name,
+            'ch_name': node.ch_name,
+            'description': node.description
+        }
+    
+    def visit_internal(self, node):
+        children = []
+        for child in node.children:
+            children.append(child.accept(self))
+        return {
+            'en_name': node.en_name,
+            'ch_name': node.ch_name,
+            'description': node.description,
+            'children': children
+        }
+
+
+class CopyCodeVisitor(RequirementTreeVisitorBase):
+    def __init__(self, src: 'RequirementTree'):
+        self.src = src
+    
+    def visit_leaf(self, node):
+        node.code = self.src.current_node.code
+
+    def visit_internal(self, node):
+        node.code = self.src.current_node.code
+        for child in node.children:
+            self.src.move_current_node(False, child.en_name)
+            child.accept(self)
+            self.src.move_current_node(True)
