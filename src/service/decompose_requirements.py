@@ -15,6 +15,8 @@ import sys, os
 from process_tree import *
 sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
 from get_config import read_config
+from zhipuai import ZhipuAI
+client = ZhipuAI(api_key="d9cbdfde73f23d6f1161dddd61ac92b4.Lhl52rvE0GCX2kDK") # 请填写您自己的APIKey
 
 class RequirementManager:
     def __init__(self, filepath):
@@ -288,8 +290,6 @@ class RequirementManager:
     # 让大模型直接处理整棵树
     def process_by_agent(self, s):
         self.tree.current_node = self.tree.root
-        json_without_description = delete_description(json.dumps(self.tree.to_dict()))
-
         flag=True
         while flag:
             flag=False
@@ -298,14 +298,23 @@ class RequirementManager:
             prompt = f"你是一位专业的 JSON 专家。\n\
             用户需求：我想要{s}\n\
             请基于用户需求修改JSON，返回的JSON里面的对象属性必须完全包含{",".join(self.node_names)}\n\
-            当前JSON如下：\n{json_without_description}\n\
+            当前JSON如下：\n{json.dumps(self.tree.to_dict())}\n\
             例子：{process_json_example}"
+            # print(prompt)
 
-            # 调用大模型生成响应
-            res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+            # # 调用本地大模型生成响应
+            # res = multiprocess.multiprocess_chat(model="qwen2.5:32b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
 
-            # 提取生成的文本
-            refined_requirements = res['message']['content'].strip()
+            # # 提取生成的文本
+            # refined_requirements = res['message']['content'].strip()
+            response = client.chat.completions.create(
+                model="glm-4-air",  # 填写需要调用的模型名称
+                messages=[
+                    {"role": "system", "content": "你是一个乐于解答各种问题的助手，你的任务是为用户提供专业、准确、有见地的建议。"},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            refined_requirements=response.choices[0].message.content
 
             # 使用正则表达式提取 JSON 内容
             pattern = re.compile(r"```json(.*?)```", re.DOTALL)
