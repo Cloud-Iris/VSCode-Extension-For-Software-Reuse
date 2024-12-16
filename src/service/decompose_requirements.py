@@ -15,10 +15,13 @@ import sys, os
 from process_tree import *
 sys.path.append(os.path.join(os.path.dirname(__file__), '../config'))
 from get_config import read_config
+from zhipuai import ZhipuAI
+client = ZhipuAI(api_key="d9cbdfde73f23d6f1161dddd61ac92b4.Lhl52rvE0GCX2kDK") # 请填写您自己的APIKey
 
 class RequirementManager:
     def __init__(self, filepath):
         self.tree = None
+        # 需求树维护节点中文名字列表
         self.node_names = []
         self.filepath = filepath
 
@@ -80,6 +83,8 @@ class RequirementManager:
         classification=""
 
         while res not in ["y", ""]:
+            # 将用户原始需求 和 当前需求树节点中文名字列表 传入大模型
+            # 由 LLM 完成 用户需求 到 操作类型 的映射，并定位到要操作的需求节点
             prompt = """你是语言专家。
             将用户需求分类到以下类别之一：增、删、改、查、拆解、生成代码。仅返回一个词。
             需求：{requirement}
@@ -87,10 +92,12 @@ class RequirementManager:
             """.format(requirement=s, node_names=str_node_names)
             res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
             classification = res['message']['content'].lower()
+            # 如果 LLM 无法识别操作类型，让 LLM 继续问用户。但是没有看到用户的回复如何传入
             if classification not in act_list.keys():
                 s = self.Rhetorical(s)
                 res = "n"
                 continue
+            # 如果 LLM 识别出操作类型，询问用户是否正确
             print(f"请问你是想对 {self.tree.current_node.ch_name} 进行 \"{classification}\" 操作吗？ [y]/n")
             res = input().strip().lower()
             if res == "n":
@@ -104,6 +111,8 @@ class RequirementManager:
     def decompose_requirements(self, input):
         """
         Decompose the requirements into a list of requirements.
+        生成 需求拆解的格式字符串结果，以便后续生成 JSON 形式
+        目前只在 decompose_node 函数中调用
         """
         input = "The requirement that you should decompose is:\n" + input.strip()
         if read_config("language") == "Chinese":
@@ -177,6 +186,7 @@ class RequirementManager:
     def display_tree_dfs(self, node, depth=0, display=True):
         """
         按照节点的深度输出树状结构
+        并按照深度 由浅到深 返回节点的中文名字列表
         @param node: 当前节点
         @param depth: 当前节点的深度
         """
@@ -205,7 +215,7 @@ class RequirementManager:
         """
         初始化一个RequirementTree
         @param s: 用户输入的需求描述
-        @return: 初始化后的RequirementTree
+        @return: (s: str, classify: str) 用户需求s, 对于需求的解读classify
         """
 
         # 如果根目录的第一层文件夹中有restore.json文件，加载树结构
@@ -261,6 +271,7 @@ class RequirementManager:
         return s, "拆解"
 
     def decompose_node(self):
+        # 如果当前节点有子节点，先删除子节点，再拆解当前节点的需求
         for child in self.tree.current_node.children:
             self.tree.current_node.remove_child(child.ch_name)
         # 分解需求
@@ -288,24 +299,31 @@ class RequirementManager:
     # 让大模型直接处理整棵树
     def process_by_agent(self, s):
         self.tree.current_node = self.tree.root
-        json_without_description = delete_description(json.dumps(self.tree.to_dict()))
-
         flag=True
         while flag:
             flag=False
             # print("json.dumps(self.tree.to_dict()): ", json.dumps(self.tree.to_dict()))
             # 生成对话提示
-            prompt = f"你是一位专业的 JSON 专家。\n\
-            用户需求：我想要{s}\n\
-            请基于用户需求修改JSON，返回的JSON里面的对象属性必须完全包含{",".join(self.node_names)}\n\
-            当前JSON如下：\n{json_without_description}\n\
-            例子：{process_json_example}"
+            prompt = f"""你是一位专业的 JSON 专家。
+用户需求：我想要{s}
+请基于用户需求修改JSON，返回的JSON里面的对象属性必须完全包含{",".join(self.node_names)}
+当前JSON如下：\n{json.dumps(self.tree.to_dict())}
+例子：{process_json_example}"""
+            # print(prompt)
 
-            # 调用大模型生成响应
-            res = multiprocess.multiprocess_chat(model=read_config("model"), stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
+            # # 调用本地大模型生成响应
+            # res = multiprocess.multiprocess_chat(model="qwen2.5:32b", stream=False, messages=[{"role": "user", "content": prompt}], options={"temperature": 0})
 
-            # 提取生成的文本
-            refined_requirements = res['message']['content'].strip()
+            # # 提取生成的文本
+            # refined_requirements = res['message']['content'].strip()
+            response = client.chat.completions.create(
+                model="glm-4-air",  # 填写需要调用的模型名称
+                messages=[
+                    {"role": "system", "content": "你是一个乐于解答各种问题的助手，你的任务是为用户提供专业、准确、有见地的建议。"},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            refined_requirements=response.choices[0].message.content
 
             # 使用正则表达式提取 JSON 内容
             pattern = re.compile(r"```json(.*?)```", re.DOTALL)
@@ -359,6 +377,9 @@ class RequirementManager:
         self.display_tree()
 
     def generate_node(self, requirement):
+        """
+        基于参数 requirement 生成该需求的 英文名，中文名 和 细节描述
+        """
         prompt = """
         You are a top-notch description expert. 
         Requirement: {requirement}. 
@@ -532,6 +553,7 @@ class RequirementManager:
         # 最后dfs搜索整个树
         return self.dfs_search_node_name(self.tree.root, selected_node_name)        
 
+    # 用户交互的核心函数
     def user_interaction(self):
         """
         用户交互函数，用于处理用户输入的需求并对需求树进行相应的操作。

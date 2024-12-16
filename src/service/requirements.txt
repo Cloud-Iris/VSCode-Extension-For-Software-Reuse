@@ -2,3 +2,7 @@ Flask==3.0.3
 Flask-Cors==5.0.0
 jieba==0.42.1
 watchdog==5.0.3
+# ollama==0.4.4
+ollama
+pyyaml
+zhipuai
