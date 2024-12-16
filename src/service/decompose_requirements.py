@@ -176,19 +176,22 @@ class RequirementManager:
         self.node_names = self.display_tree_dfs(self.tree.root)
         print("=====================")
 
-    def display_tree_dfs(self, node, depth=0, display=True):
+    def display_tree_dfs(self, node, depth=0, display=True, prefix=""):
         """
-        按照节点的深度输出树状结构
+        按照节点的深度输出树状结构，并为每个节点添加编号
         @param node: 当前节点
         @param depth: 当前节点的深度
+        @param prefix: 当前节点的编号前缀
         """
         node_name = []
+        current_prefix = f"{prefix}" if prefix else f"{depth + 1}"
         node_name.append(node.ch_name)
         if display:
-            print("\t" * depth + node.ch_name)
+            print("\t" * depth + f"{current_prefix} {node.ch_name}")
         if hasattr(node, 'children') and node.children:
-            for child in node.children:
-                node_name.extend(self.display_tree_dfs(child, depth + 1, display))
+            for i, child in enumerate(node.children):
+                child_prefix = f"{current_prefix}.{i + 1}"
+                node_name.extend(self.display_tree_dfs(child, depth + 1, display, child_prefix))
         return node_name
 
     def generate_code(self):
@@ -298,7 +301,7 @@ class RequirementManager:
             prompt = f"你是一位专业的 JSON 专家。\n\
             用户需求：我想要{s}\n\
             请基于用户需求修改JSON，返回的JSON里面的对象属性必须完全包含{",".join(self.node_names)}\n\
-            当前JSON如下：\n{json.dumps(self.tree.to_dict())}\n\
+            你返回的必须是一个完整的JSON，当前JSON如下：\n{json.dumps(self.tree.to_dict())}\n\
             例子：{process_json_example}"
             # print(prompt)
 
