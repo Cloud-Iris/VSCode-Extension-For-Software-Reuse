@@ -110,8 +110,8 @@ class RequirementManager:
 
     def decompose_requirements(self, input):
         """
-        Decompose the requirements into a list of requirements.
-        生成 需求拆解的格式字符串结果，以便后续生成 JSON 形式
+        将需求分解为需求列表
+        生成需求拆解的格式字符串结果，以便后续生成 JSON 形式
         目前只在 decompose_node 函数中调用
         """
         input = "The requirement that you should decompose is:\n" + input.strip()
